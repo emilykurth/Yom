@@ -311,7 +311,7 @@ function renderHome() {
         </button>`;
       }).join('')}
     </div>
-    ${S.cats.length ? '' : `<p class="empty"><b>Nothing here yet</b>Type a food above — like “Strawberry smoothie” — and tap +.</p>`}
+    ${S.cats.length ? '' : `<p class="empty"><b>Nothing here yet</b>Type a food above — like “Strawberry smoothie” — and tap +</p>`}
 
     ${recent.length ? `<p class="section-cap">Recently rated</p><div class="list">${recent.map(r => ratingCard(r, true)).join('')}</div>` : ''}
   `;
