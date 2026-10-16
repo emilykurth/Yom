@@ -194,6 +194,37 @@ async function hydratePhotos(root) {
   }
 }
 
+/* ---------- feel: ripple + light haptic tap ---------- */
+const TAPPABLE = '.tile, .rcard, .new-card, .btn, .pill:not(.label), .theme-opt, .av-opt, .icon-opt, .round-btn, .swatch, .add-bar button, .sheet-head .link.strong, .avatar-big, .q-del';
+const RIPPLE = '.tile, .rcard, .new-card, .btn, .theme-opt, .av-opt, .icon-opt, .pill:not(.label)';
+// iOS Safari has no vibrate(); toggling a hidden "switch" checkbox gives a light system tick on iOS 18+.
+let hapticLabel = null;
+function haptic() {
+  try {
+    if (navigator.vibrate) { navigator.vibrate(8); return; }
+    if (!hapticLabel) {
+      hapticLabel = document.createElement('label');
+      hapticLabel.setAttribute('aria-hidden', 'true');
+      hapticLabel.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none';
+      hapticLabel.innerHTML = '<input type="checkbox" switch tabindex="-1">';
+      document.body.appendChild(hapticLabel);
+    }
+    hapticLabel.click();
+  } catch {}
+}
+document.addEventListener('pointerdown', e => {
+  const el = e.target.closest(RIPPLE);
+  if (!el || el.disabled || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const r = el.getBoundingClientRect();
+  const size = Math.hypot(r.width, r.height) * 2;
+  const dot = document.createElement('span');
+  dot.className = 'ripple';
+  dot.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX - r.left - size / 2}px;top:${e.clientY - r.top - size / 2}px`;
+  el.appendChild(dot);
+  setTimeout(() => dot.remove(), 600);
+}, { passive: true });
+document.addEventListener('click', e => { if (e.target.closest(TAPPABLE)) haptic(); }, true);
+
 /* ---------- UI bits ---------- */
 function ask(message, okLabel = 'Delete') {
   return new Promise(resolve => {
@@ -684,6 +715,7 @@ function openRatingEditor(cat, existing) {
         const s = d.scores[+el.dataset.i];
         const slider = $('.slider', el);
         slider.addEventListener('input', () => {
+          if (Math.floor(+slider.value) !== Math.floor(s.value)) haptic(); // tick on each whole number
           s.value = +slider.value;
           slider.style.setProperty('--p', `${s.value * 10}%`);
           $('[data-val]', el).textContent = fmt(s.value);

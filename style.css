@@ -462,3 +462,48 @@ html[data-theme="cinnamon"] .q-row input[type=text] { box-shadow: none; }
 .av-opt svg { width: 46px; height: 46px; border-radius: 50%; overflow: hidden; }
 .av-opt.on { border-color: var(--accent); color: var(--ink); }
 .swatch { border: 0; }
+
+/* ================= feel: press, ripple, hover ================= */
+.tile, .rcard, .new-card, .btn, .pill, .round-btn, .theme-opt, .av-opt, .icon-opt, .swatch, .add-bar button,
+.sheet-head .link.strong, .avatar-big, .photo-pick, .q-del, .chip {
+  transition: transform .32s cubic-bezier(.34, 1.56, .64, 1), box-shadow .2s ease, background-color .2s ease, filter .2s ease;
+  -webkit-user-select: none; user-select: none;
+}
+/* press: quick squish, springy release */
+.tile:active, .rcard:active, .new-card:active, .theme-opt:active, .av-opt:active, .icon-opt:active, .photo-pick:active { transform: scale(.95); transition-duration: .08s; }
+.btn:active, .pill:active, .round-btn:active, .swatch:active, .add-bar button:active, .sheet-head .link.strong:active, .q-del:active { transform: scale(.9); transition-duration: .08s; }
+.avatar-big:active { transform: scale(.97); transition-duration: .08s; }
+.new-card:active .plus-circle { transform: scale(.88); }
+.plus-circle { transition: transform .32s cubic-bezier(.34, 1.56, .64, 1); }
+
+/* ripple from where you tapped */
+.tile, .rcard, .new-card, .btn, .theme-opt, .av-opt, .icon-opt, .pill { position: relative; overflow: hidden; isolation: isolate; }
+.ripple {
+  position: absolute; border-radius: 50%; pointer-events: none; z-index: -1;
+  background: var(--accent); opacity: .22; transform: scale(0);
+  animation: ripple .55s cubic-bezier(.2, .7, .3, 1) forwards;
+}
+.btn .ripple, .pill.on .ripple { background: #fff; opacity: .35; }
+@keyframes ripple { to { transform: scale(1); opacity: 0; } }
+
+/* hover, only on devices with a mouse/trackpad */
+@media (hover: hover) and (pointer: fine) {
+  .tile:hover { transform: translateY(-4px); box-shadow: 0 10px 24px rgba(120, 60, 20, .14); background: color-mix(in srgb, var(--tint, var(--t0)) calc(var(--tile-mix) + 8%), var(--tile-base)); }
+  .tile:hover .icon { transform: scale(1.06) rotate(-3deg); }
+  .tile .icon { transition: transform .35s cubic-bezier(.34, 1.56, .64, 1); }
+  .rcard:hover, .new-card:hover, .theme-opt:hover, .av-opt:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(120, 60, 20, .12); }
+  .new-card:hover .plus-circle { transform: scale(1.08) rotate(90deg); }
+  .btn:hover, .sheet-head .link.strong:hover, .pill.on:hover { filter: brightness(1.07); transform: translateY(-1px); }
+  .btn.ghost:hover, .pill:not(.on):not(.label):hover { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+  .round-btn:hover { transform: scale(1.08); }
+  .add-bar:focus-within, .add-bar:hover { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent), var(--shadow); }
+  .add-bar button:hover { transform: scale(1.15) rotate(90deg); color: var(--accent); }
+  .icon-opt:hover, .swatch:hover { transform: scale(1.08); }
+  .avatar-big:hover { transform: scale(1.03) rotate(-2deg); }
+  .photo-pick:hover { border-color: var(--accent); }
+  .q-del:hover { color: var(--accent); }
+  .sheet-head .link:not(.strong):hover { color: var(--accent); }
+  .tile, .rcard, .new-card, .btn, .pill, .round-btn, .theme-opt, .av-opt, .icon-opt, .swatch, .add-bar button, .avatar-big { cursor: pointer; }
+}
+.add-bar { transition: box-shadow .2s ease; }
+@media (prefers-reduced-motion: reduce) { .ripple { display: none; } }
