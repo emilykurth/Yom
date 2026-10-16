@@ -49,7 +49,8 @@ svg { display: block; }
   color: var(--ink);
 }
 .round-btn svg { width: 18px; height: 18px; }
-.greet { text-align: center; padding-top: 8px; }
+.greet { text-align: center; padding: 8px 48px 0; }
+.greet .sub { text-wrap: balance; }
 .greet .hello { font-size: 15px; letter-spacing: .04em; text-transform: uppercase; font-weight: 400; }
 .greet .sub { font-size: 15px; font-weight: 300; }
 .avatar-big { display: block; width: 220px; height: 220px; margin: 18px auto 0; }
