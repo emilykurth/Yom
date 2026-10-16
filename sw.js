@@ -1,5 +1,5 @@
 // App files: network-first (fresh when online, cached when offline). Fonts: cache-first.
-const CACHE = 'yom-6';
+const CACHE = 'yom-7';
 const ASSETS = [
   './', './index.html', './style.css', './app.js', './icons.js', './avatar.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'
@@ -34,8 +34,9 @@ self.addEventListener('fetch', e => {
   }
   if (url.origin !== location.origin) return;
 
+  // 'no-cache' makes the browser check GitHub for a newer copy every time, so updates show up right away
   e.respondWith(
-    fetch(req)
+    fetch(req, { cache: 'no-cache' })
       .then(res => {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(req, copy));
