@@ -25,6 +25,7 @@ const firstGrapheme = s => {
   if (window.Intl && Intl.Segmenter) { for (const { segment } of new Intl.Segmenter().segment(s)) return segment; }
   return [...s][0];
 };
+const APP_VERSION = '8';
 const TAGLINES = [
   "Feeling hungry?",
   "What's on the menu today?",
@@ -856,6 +857,7 @@ function openSettings() {
     </div>
     <p class="field-cap">How scores work</p>
     <p>A rating's overall score is the average of the qualities you ticked. A food's average is the average of all its ratings. Stars show the same average out of 5.</p>
+    <p class="version">Yom version ${APP_VERSION}</p>
   </div>`;
 
   openSheet({
@@ -972,7 +974,22 @@ document.addEventListener('visibilitychange', () => {
     console.error(e);
     app.innerHTML = `<p class="empty"><b>Couldn't open your data</b>${esc(e.message)}. If you're in Private Browsing, switch it off and reload.</p>`;
   }
-  if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.TB_DEMO_SEED) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.TB_DEMO_SEED) {
+    // When a newer version of Yom is published, switch to it straight away.
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloaded || $('.sheet-wrap')) return;
+      reloaded = true;
+      location.reload();
+    });
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+      .then(reg => {
+        reg.update().catch(() => {});
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+      })
+      .catch(() => {});
+  }
 })();
 
 async function seedDemo(seed) {

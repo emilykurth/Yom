@@ -1,7 +1,7 @@
 // App files: network-first (fresh when online, cached when offline). Fonts: cache-first.
-const CACHE = 'yom-7';
+const CACHE = 'yom-8';
 const ASSETS = [
-  './', './index.html', './style.css', './app.js', './icons.js', './avatar.js', './manifest.webmanifest',
+  './', './index.html', './style.css?v=8', './app.js?v=8', './icons.js?v=8', './avatar.js?v=8', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'
 ];
 
@@ -42,6 +42,6 @@ self.addEventListener('fetch', e => {
         caches.open(CACHE).then(c => c.put(req, copy));
         return res;
       })
-      .catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || caches.match('./index.html')))
+      .catch(() => caches.match(req).then(r => r || caches.match('./index.html')))
   );
 });

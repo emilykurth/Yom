@@ -508,3 +508,5 @@ html[data-theme="cinnamon"] .q-row input[type=text] { box-shadow: none; }
 }
 .add-bar { transition: box-shadow .2s ease; }
 @media (prefers-reduced-motion: reduce) { .ripple { display: none; } }
+
+.settings .version { margin-top: 18px; font-size: 11px; color: var(--ink-faint); }
