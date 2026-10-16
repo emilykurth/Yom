@@ -40,21 +40,21 @@ const AVATAR_SVG = `<svg viewBox="0 0 200 200" aria-hidden="true">
   <defs><clipPath id="av-clip"><circle cx="100" cy="100" r="96"/></clipPath></defs>
   <circle cx="100" cy="100" r="96" fill="#fff" fill-opacity=".14"/>
   <g clip-path="url(#av-clip)">
-    <path d="M44 210 C44 168 70 152 100 152 C130 152 156 168 156 210 Z" fill="#D4D4D4"/>
-    <rect x="88" y="128" width="24" height="30" rx="8" fill="#DCDCDC"/>
-    <circle cx="66" cy="44" r="20" fill="#858585"/>
-    <circle cx="80" cy="34" r="6" fill="#959595"/>
-    <ellipse cx="100" cy="86" rx="54" ry="52" fill="#858585"/>
-    <circle cx="55" cy="102" r="10" fill="#D8D8D8"/>
-    <circle cx="145" cy="102" r="10" fill="#D8D8D8"/>
-    <ellipse cx="100" cy="100" rx="44" ry="46" fill="#E2E2E2"/>
-    <path d="M56 84 C58 52 80 42 100 42 C124 42 144 56 144 78 C128 64 112 60 98 58 C86 64 72 74 56 84 Z" fill="#858585"/>
-    <path d="M74 92 h18 M108 92 h18" stroke="#8A8A8A" stroke-width="4" stroke-linecap="round"/>
-    <path d="M76 97 a7 5 0 0 0 14 0 M110 97 a7 5 0 0 0 14 0" fill="#9A9A9A"/>
-    <path d="M100 98 v18" stroke="#BDBDBD" stroke-width="4" stroke-linecap="round"/>
-    <circle cx="72" cy="114" r="8" fill="#C6C6C6"/>
-    <circle cx="128" cy="114" r="8" fill="#C6C6C6"/>
+    <path d="M44 210 C44 168 70 152 100 152 C130 152 156 168 156 210 Z" fill="#A8CBA2"/>
+    <rect x="88" y="128" width="24" height="30" rx="8" fill="#E9C2AC"/>
+    <circle cx="66" cy="44" r="20" fill="#5B4256"/>
+    <circle cx="80" cy="34" r="6" fill="#6E5268"/>
+    <ellipse cx="100" cy="86" rx="54" ry="52" fill="#5B4256"/>
+    <circle cx="55" cy="102" r="10" fill="#E9C2AC"/>
+    <circle cx="145" cy="102" r="10" fill="#E9C2AC"/>
+    <ellipse cx="100" cy="100" rx="44" ry="46" fill="#F2D4C2"/>
+    <path d="M56 84 C58 52 80 42 100 42 C124 42 144 56 144 78 C128 64 112 60 98 58 C86 64 72 74 56 84 Z" fill="#5B4256"/>
+    <path d="M74 92 h18 M108 92 h18" stroke="#5B4256" stroke-width="4" stroke-linecap="round"/>
+    <path d="M76 97 a7 5 0 0 0 14 0 M110 97 a7 5 0 0 0 14 0" fill="#5B4256"/>
+    <path d="M100 98 v18" stroke="#DDB29C" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="72" cy="114" r="8" fill="#E9A68C"/>
+    <circle cx="128" cy="114" r="8" fill="#E9A68C"/>
     <rect x="88" y="122" width="24" height="10" rx="5" fill="#fff"/>
-    <circle cx="100" cy="142" r="3" fill="#C6C6C6"/>
+    <circle cx="100" cy="142" r="3" fill="#E9A68C"/>
   </g>
 </svg>`;

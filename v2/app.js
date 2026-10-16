@@ -36,7 +36,10 @@ const UI = {
   star: '<svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>',
 };
 
-const TINTS = ['#E6E6E6', '#F5C6CE', '#F6D9B8', '#F1E6A8', '#C9E6BD', '#BFDDEE', '#D2CAF3', '#EEC6E2'];
+const TINTS = ['#E9A68C', '#E8C27D', '#A8CBA2', '#9DC4D3', '#B9AEE0', '#E3A7C0', '#D9C3A5', '#EDE6DE'];
+// earlier colour choices (v1 pastels / grey) map onto the new muted palette
+const OLD_TINTS = { '#FFD3DA': 0, '#FFE0C2': 0, '#FFF0B3': 1, '#D4F0C6': 2, '#C9E8F5': 3, '#DAD3FA': 4, '#F7D0EC': 5, '#E9DCCD': 6,
+  '#F5C6CE': 5, '#F6D9B8': 0, '#F1E6A8': 1, '#C9E6BD': 2, '#BFDDEE': 3, '#D2CAF3': 4, '#EEC6E2': 5 };
 const SUGGESTED = ['Taste', 'Flavor', 'Texture', 'Sweetness', 'Price / value', 'Visual appeal', 'Portion size', 'Freshness', 'Temperature', 'Thickness', 'Crust', 'Sauce', 'Service'];
 const defaultCounts = name => !/price|value|cost|service/i.test(name);
 
@@ -50,7 +53,14 @@ function iconHTML(c) {
   if (k) return `<span class="icon"><svg viewBox="0 0 64 64">${FOOD_ICONS[k].svg}</svg></span>`;
   return `<span class="icon emoji">${esc(c?.emoji || '🍽️')}</span>`;
 }
-const tintStyle = c => (c?.color && TINTS.includes(c.color) ? `style="color:${c.color}"` : '');
+function tintOf(c) {
+  if (!c) return TINTS[0];
+  if (TINTS.includes(c.color)) return c.color;
+  if (c.color in OLD_TINTS) return TINTS[OLD_TINTS[c.color]];
+  const i = Math.max(0, S.cats.findIndex(x => x.id === c.id));
+  return TINTS[i % (TINTS.length - 1)];
+}
+const tintStyle = c => `style="--tint:${tintOf(c)}"`;
 
 /* ---------- storage (IndexedDB) ---------- */
 let db;
@@ -334,9 +344,10 @@ function openSheet({ title, mid, body, saveLabel, onSave, cancelLabel = 'Cancel'
 /* ---------- category editor ---------- */
 function openCategoryEditor(existing, prefillName = '') {
   const d = existing ? structuredClone(existing) : {
-    id: uid(), name: prefillName, emoji: '🍽️', icon: 'plate', color: TINTS[0], qualities: [], createdAt: Date.now(),
+    id: uid(), name: prefillName, emoji: '🍽️', icon: 'plate', color: TINTS[S.cats.length % (TINTS.length - 1)], qualities: [], createdAt: Date.now(),
   };
   if (existing && !d.icon) d.icon = iconKey(d) || '';
+  if (existing) d.color = tintOf(existing);
   if (!existing && prefillName) {
     // guess an icon from the name
     const n = prefillName.toLowerCase();
@@ -357,7 +368,7 @@ function openCategoryEditor(existing, prefillName = '') {
     <input id="f-name" type="text" placeholder="Name of food, e.g. Hamburgers..." value="${esc(d.name)}" maxlength="40" autocomplete="off">
 
     <p class="field-cap">Icon</p>
-    <div class="icon-grid" id="icon-grid">${Object.entries(FOOD_ICONS).map(([k, v]) =>
+    <div class="icon-grid" id="icon-grid" style="--tint:${d.color}">${Object.entries(FOOD_ICONS).map(([k, v]) =>
       `<button type="button" class="icon-opt ${k === d.icon ? 'on' : ''}" data-icon="${k}" aria-label="${esc(v.label)}"><svg class="icon" viewBox="0 0 64 64">${v.svg}</svg></button>`).join('')}</div>
     <div class="emoji-row">Or use any emoji instead <input id="f-emoji" type="text" maxlength="12" placeholder="🙂" autocomplete="off"></div>
 
@@ -391,7 +402,7 @@ function openCategoryEditor(existing, prefillName = '') {
     },
     mount: (wrap, close) => {
       const pv = $('#pv', wrap), qList = $('#q-list', wrap), chips = $('#q-chips', wrap);
-      const drawPreview = () => { pv.innerHTML = iconHTML(d); pv.style.color = d.color; };
+      const drawPreview = () => { pv.innerHTML = iconHTML(d); pv.style.setProperty('--tint', d.color); $('#icon-grid', wrap).style.setProperty('--tint', d.color); };
 
       const drawQualities = () => {
         qList.innerHTML = d.qualities.map(q => `
