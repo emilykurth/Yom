@@ -449,3 +449,16 @@ html[data-theme="cinnamon"] .q-row input[type=text] { box-shadow: none; }
 .ask .actions { margin-top: 0; }
 .demo-note { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--ink-soft); background: var(--surface); border-radius: 10px; padding: 8px 12px; margin-bottom: 14px; box-shadow: var(--shadow); }
 .demo-note button { font-size: 12px; font-weight: 600; color: var(--accent); padding: 4px 2px; white-space: nowrap; }
+
+/* avatar editor */
+.av-preview { width: 150px; height: 150px; margin: 0 auto 6px; }
+.av-preview svg, .av-opt svg { width: 100%; height: 100%; }
+.av-preview .av-bg, .av-opt .av-bg { fill: var(--avatar-bg); }
+.av-tools { display: flex; justify-content: center; margin-bottom: 14px; }
+.av-opts { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: 8px; }
+.settings .field-cap { margin-top: 24px; }
+.av-opt svg { max-width: 100%; }
+.av-opt { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px; border-radius: 10px; background: var(--surface-2); color: var(--ink-soft); font-size: 10px; border: 2px solid transparent; }
+.av-opt svg { width: 46px; height: 46px; border-radius: 50%; overflow: hidden; }
+.av-opt.on { border-color: var(--accent); color: var(--ink); }
+.swatch { border: 0; }

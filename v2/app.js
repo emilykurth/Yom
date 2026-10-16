@@ -241,7 +241,7 @@ function renderHome() {
       <p class="hello">Hello ${esc(greetName())}</p>
       <p class="sub">Feeling hungry?</p>
     </header>
-    <button class="avatar-big" data-action="settings" aria-label="Your profile">${AVATAR_SVG}</button>
+    <button class="avatar-big" data-action="settings" aria-label="Your profile">${avatarSVG(S.profile.avatar)}</button>
     <p class="stat-line">${plural(S.cats.length, 'food')} · ${plural(S.ratings.length, 'rating')} · ${plural(places, 'place')}</p>
 
     <h2 class="prompt">What would you like to rate today?</h2>
@@ -572,12 +572,11 @@ function openRatingEditor(cat, existing) {
     <div class="stack">
       <input id="r-name" type="text" list="dl-rest" placeholder="Restaurant Name..." value="${esc(d.restaurant)}" autocomplete="off" maxlength="60">
       <input id="r-loc" type="text" list="dl-loc" placeholder="Location..." value="${esc(d.location)}" autocomplete="off" maxlength="60">
-      <input id="r-item" type="text" list="dl-item" placeholder="Menu item name..." value="${esc(d.item || '')}" autocomplete="off" maxlength="60">
+      <input id="r-item" type="text" placeholder="Menu item name..." value="${esc(d.item || '')}" autocomplete="off" maxlength="60">
       <label class="date-row">Date<input id="r-date" type="date" value="${esc(d.date)}"></label>
     </div>
     <datalist id="dl-rest">${uniq('restaurant').map(v => `<option value="${esc(v)}">`).join('')}</datalist>
     <datalist id="dl-loc">${uniq('location').map(v => `<option value="${esc(v)}">`).join('')}</datalist>
-    <datalist id="dl-item">${uniq('item').map(v => `<option value="${esc(v)}">`).join('')}</datalist>
 
     <label class="photo-pick ${d.hasPhoto ? 'has' : ''}" id="photo-pick">
       <img id="photo-img" alt="">
@@ -757,8 +756,13 @@ async function importBackup(file) {
 }
 
 function openSettings() {
+  const av = { ...DEFAULT_AVATAR, ...(S.profile.avatar || {}) };
+  const FACE = '52 62 96 76';
   const body = `<div class="settings">
+    <div class="av-preview" id="av-preview">${avatarSVG(av)}</div>
+    <div class="av-tools"><button type="button" class="pill" id="av-random">Shuffle</button></div>
     <input id="s-name" type="text" placeholder="Your name..." value="${esc(S.profile.name === 'My Tastebook' ? '' : S.profile.name)}" maxlength="40" autocomplete="off">
+    <div id="av-editor"></div>
     <p class="field-cap">Colour theme</p>
     <div class="theme-grid" id="theme-grid">${THEMES.map(t => `<button type="button" class="theme-opt ${document.documentElement.dataset.theme === t.id ? 'on' : ''}" data-theme-id="${t.id}">
       <span class="sw">${t.sw.map(c => `<i style="background:${c}"></i>`).join('')}</span><span>${t.name}</span></button>`).join('')}</div>
@@ -776,12 +780,40 @@ function openSettings() {
     title: 'Profile',
     body,
     onSave: async () => {
-      S.profile = { ...S.profile, name: $('#s-name').value.trim(), theme: document.documentElement.dataset.theme };
+      S.profile = { ...S.profile, name: $('#s-name').value.trim(), theme: document.documentElement.dataset.theme, avatar: av };
       await dbPut('meta', S.profile, 'profile');
       render();
     },
     mount: (wrap, close) => {
       const startTheme = document.documentElement.dataset.theme;
+      const editor = $('#av-editor', wrap), preview = $('#av-preview', wrap);
+      const shapeRow = (part, label, vb) => `<p class="field-cap">${label}</p><div class="av-opts" style="--cols:${AVATAR_OPTIONS[part].length === 5 ? 5 : 3}">${AVATAR_OPTIONS[part].map(o =>
+        `<button type="button" class="av-opt ${av[part] === o.id ? 'on' : ''}" data-part="${part}" data-val="${o.id}" aria-label="${o.label}">${avatarSVG({ ...av, [part]: o.id }, vb)}<span>${o.label}</span></button>`).join('')}</div>`;
+      const colourRow = (part, label) => `<p class="field-cap">${label}</p><div class="swatches">${AVATAR_OPTIONS[part].map((c, i) =>
+        `<button type="button" class="swatch ${av[part] === i ? 'on' : ''}" style="--c:${c}" data-part="${part}" data-val="${i}" aria-label="${label} ${i + 1}"></button>`).join('')}</div>`;
+      const drawAvatar = () => {
+        preview.innerHTML = avatarSVG(av);
+        editor.innerHTML = shapeRow('hair', 'Hair', '0 0 200 200') + colourRow('hairColor', 'Hair colour')
+          + shapeRow('eyes', 'Eyes', FACE) + shapeRow('mouth', 'Mouth', FACE) + shapeRow('extra', 'Extras', FACE)
+          + colourRow('skin', 'Skin') + colourRow('shirt', 'Top');
+      };
+      drawAvatar();
+      editor.addEventListener('click', e => {
+        const b = e.target.closest('[data-part]');
+        if (!b) return;
+        const part = b.dataset.part;
+        av[part] = /^(skin|hairColor|shirt)$/.test(part) ? +b.dataset.val : b.dataset.val;
+        drawAvatar();
+      });
+      const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+      $('#av-random', wrap).onclick = () => {
+        av.hair = pick(AVATAR_OPTIONS.hair).id; av.eyes = pick(AVATAR_OPTIONS.eyes).id; av.mouth = pick(AVATAR_OPTIONS.mouth).id;
+        av.extra = Math.random() < .6 ? 'none' : pick(AVATAR_OPTIONS.extra).id;
+        av.hairColor = Math.floor(Math.random() * AVATAR_OPTIONS.hairColor.length);
+        av.skin = Math.floor(Math.random() * AVATAR_OPTIONS.skin.length);
+        av.shirt = Math.floor(Math.random() * AVATAR_OPTIONS.shirt.length);
+        drawAvatar();
+      };
       $('#theme-grid', wrap).addEventListener('click', e => {
         const b = e.target.closest('[data-theme-id]');
         if (!b) return;
