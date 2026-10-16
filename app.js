@@ -25,6 +25,55 @@ const firstGrapheme = s => {
   if (window.Intl && Intl.Segmenter) { for (const { segment } of new Intl.Segmenter().segment(s)) return segment; }
   return [...s][0];
 };
+const TAGLINES = [
+  "Feeling hungry?",
+  "What's on the menu today?",
+  "Snack o'clock, surely.",
+  "Calories don't count if you're rating them.",
+  "Every bite is research.",
+  "Your taste buds called. They're ready.",
+  "Have you eaten? Asking for a friend.",
+  "Life is short. Order the dessert.",
+  "Hungry for a new high score?",
+  "Somewhere, a cinnamon roll is waiting for you.",
+  "Professional snacker reporting for duty.",
+  "Fork yeah, let's rate something.",
+  "Brunch is a lifestyle.",
+  "Trust your gut. Then rate it.",
+  "In crust we trust.",
+  "Smoothie operator, back again.",
+  "Today's forecast: 100% chance of snacks.",
+  "Taste first, judge second.",
+  "Good food, good mood.",
+  "Be the 10/10 you want to see in the world.",
+  "Lettuce get started.",
+  "You've got great taste. Literally.",
+  "Room for one more?",
+  "There's always room for dessert.",
+  "Donut worry, be happy.",
+  "Rate it before you plate it.",
+  "Eat the cake. Then rate the cake.",
+  "Ready to get saucy?",
+  "Don't go bacon my heart.",
+  "This is nacho average food diary.",
+  "The search for the perfect bite continues.",
+  "Grab a fork, let's go.",
+  "Feeling snacky?",
+  "Let's taco 'bout what you ate.",
+  "Butter late than never.",
+  "Keep calm and eat on.",
+  "Fries before guys.",
+  "Hello, fellow food critic.",
+  "You bring the appetite, I'll bring the stars.",
+  "What are we craving today?"
+  ];
+let lastTagline = -1;
+function nextTagline() {
+  let i;
+  do { i = Math.floor(Math.random() * TAGLINES.length); } while (i === lastTagline && TAGLINES.length > 1);
+  lastTagline = i;
+  return TAGLINES[i];
+}
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
 const UI = {
@@ -221,6 +270,7 @@ const app = $('#app');
 /* Simple router: the open category lives in S.route; the URL hash mirrors it when the browser allows. */
 function go(catId) {
   S.route = catId || null;
+  if (!S.route) S.tagline = nextTagline();
   try { history.replaceState(null, '', catId ? `#c-${catId}` : location.pathname + location.search); } catch {}
   render();
   window.scrollTo(0, 0);
@@ -239,7 +289,7 @@ function renderHome() {
     <div class="top-tools"><button class="round-btn" data-action="settings" aria-label="Profile and settings">${UI.gear}</button></div>
     <header class="greet">
       <p class="hello">Hello ${esc(greetName())}</p>
-      <p class="sub">Feeling hungry?</p>
+      <p class="sub" id="tagline">${esc(S.tagline || (S.tagline = nextTagline()))}</p>
     </header>
     <button class="avatar-big" data-action="settings" aria-label="Your profile">${avatarSVG(S.profile.avatar)}</button>
     <p class="stat-line">${plural(S.cats.length, 'food')} · ${plural(S.ratings.length, 'rating')} · ${plural(places, 'place')}</p>
@@ -863,6 +913,14 @@ document.addEventListener('click', e => {
   }
 });
 
+
+// New tagline each time the app comes back to the screen
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || S.route) return;
+  S.tagline = nextTagline();
+  const t = $('#tagline');
+  if (t) t.textContent = S.tagline;
+});
 
 (async function start() {
   try { db = await openDB(); } catch (e) { console.warn('Storage unavailable, using memory', e); db = null; }
