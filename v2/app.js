@@ -36,12 +36,13 @@ const UI = {
   star: '<svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>',
 };
 
-const TINTS = ['#E9A68C', '#E8C27D', '#A8CBA2', '#9DC4D3', '#B9AEE0', '#E3A7C0', '#D9C3A5', '#EDE6DE'];
+const TINTS = ['#E9A68C', '#E8C27D', '#A8CBA2', '#9DC4D3', '#B9AEE0', '#E3A7C0', '#D9C3A5', '#EDE6DE', '#D2867F', '#8E9A62', '#9A6478'];
 // earlier colour choices (v1 pastels / grey) map onto the new muted palette
 const OLD_TINTS = { '#FFD3DA': 0, '#FFE0C2': 0, '#FFF0B3': 1, '#D4F0C6': 2, '#C9E8F5': 3, '#DAD3FA': 4, '#F7D0EC': 5, '#E9DCCD': 6,
   '#F5C6CE': 5, '#F6D9B8': 0, '#F1E6A8': 1, '#C9E6BD': 2, '#BFDDEE': 3, '#D2CAF3': 4, '#EEC6E2': 5 };
 const THEMES = [
-  { id: 'cinnamon', name: 'Cinnamon', sw: ['#FCF3E8', '#CF6A33', '#B9543F', '#E0954E'] },
+  { id: 'warm-dark', name: 'Warm dark', sw: ['#3E2A20', '#E2804A', '#EBB25A', '#E1A2A2'] },
+  { id: 'cinnamon', name: 'Warm', sw: ['#FCF3E8', '#CF6A33', '#B9543F', '#E0954E'] },
   { id: 'sorbet', name: 'Sorbet', sw: ['#FFF3E6', '#E2457A', '#F5A623', '#6DBE45'] },
   { id: 'fresh', name: 'Fresh', sw: ['#FFFFFF', '#2F9967', '#EDAE35', '#E06666'] },
   { id: 'matcha', name: 'Matcha', sw: ['#324A3B', '#BCDB9C', '#F1CB70', '#F2A9B6'] },
@@ -361,7 +362,7 @@ function openSheet({ title, mid, body, saveLabel, onSave, cancelLabel = 'Cancel'
 /* ---------- category editor ---------- */
 function openCategoryEditor(existing, prefillName = '') {
   const d = existing ? structuredClone(existing) : {
-    id: uid(), name: prefillName, emoji: '🍽️', icon: 'plate', color: TINTS[S.cats.length % TINTS.length], qualities: [], createdAt: Date.now(),
+    id: uid(), name: prefillName, emoji: '🍽️', icon: 'plate', color: TINTS[S.cats.length % 8], qualities: [], createdAt: Date.now(),
   };
   if (existing && !d.icon) d.icon = iconKey(d) || '';
   if (existing) d.color = tintOf(existing);
@@ -378,6 +379,12 @@ function openCategoryEditor(existing, prefillName = '') {
       ['salad', 'bowl'], ['bowl', 'bowl'], ['burger', 'burger'], ['pizza', 'pizza']];
     const hit = guess.find(([w]) => n.includes(w));
     if (hit) { d.icon = hit[1]; d.emoji = FOOD_ICONS[hit[1]].emoji; }
+    const tintGuess = [[/strawberr|raspberr|pink|rose|cherry|watermelon|guava|dragon/, 8],
+      [/green|matcha|mint|avocado|kale|spinach|kiwi|pistachio|pesto|herb|salad|lime/, 9],
+      [/blueberr|acai|açaí|ube|taro|grape|plum|blackberr|purple/, 10],
+      [/choc|cocoa|mocha|brownie|coffee|espresso|latte/, 7], [/caramel|honey|banana|mango|peach|lemon|custard|cheese/, 6]];
+    const tg = tintGuess.find(([re]) => re.test(n));
+    if (tg) d.color = TINTS[tg[1]];
   }
 
   const body = `
@@ -794,7 +801,7 @@ window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); }
   try {
     db = await openDB();
     await loadState();
-    applyTheme(S.profile.theme || localStorage.getItem('tb2-theme') || 'cinnamon');
+    applyTheme(S.profile.theme || localStorage.getItem('tb2-theme') || 'warm-dark');
     render();
     navigator.storage?.persist?.().catch(() => {});
   } catch (e) {

@@ -287,6 +287,17 @@ svg.icon { fill: currentColor; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
 /* ================= themes ================= */
+html[data-theme="warm-dark"] {
+  --bg-top: #5B3B2B; --bg-mid: #3E2A20; --bg-bot: #231610;
+  --ink: #F8EBDD; --ink-soft: rgba(248,235,221,.7); --ink-faint: rgba(248,235,221,.42);
+  --surface: rgba(255,236,218,.075); --surface-2: rgba(255,236,218,.08); --line: rgba(255,236,218,.17);
+  --field: #FBF1E5; --field-ink: #3A2519; --placeholder: #9E8471;
+  --accent: #E2804A; --accent-ink: #26170F; --gold: #EBB25A;
+  --tile-base: rgba(255,236,218,.06); --tile-mix: 10%; --shadow: none;
+  --avatar-bg: rgba(255,236,218,.1); --avatar-hair: #2C1A12; --avatar-shirt: #E2804A;
+  --t0: #E58A4E; --t1: #D9765F; --t2: #ECAA6A; --t3: #C9935F; --t4: #E7A086; --t5: #BF7B60; --t6: #EEBC76; --t7: #B08B72; --t8: #E1A2A2; --t9: #ABBB8C; --t10: #BC92A6;
+  --theme-color: #5B3B2B; color-scheme: dark;
+}
 html[data-theme="cinnamon"] {
   --bg-top: #FCF3E8; --bg-mid: #F8E6D2; --bg-bot: #F1D2B4;
   --ink: #3A2519; --ink-soft: rgba(58,37,25,.66); --ink-faint: rgba(58,37,25,.4);
@@ -295,7 +306,7 @@ html[data-theme="cinnamon"] {
   --accent: #CF6A33; --accent-ink: #FFF8F0; --gold: #DE9A3E;
   --tile-base: #FFF9F2; --tile-mix: 9%; --shadow: 0 1px 2px rgba(120,60,20,.06), 0 6px 18px rgba(150,80,30,.08);
   --avatar-bg: #F6DCC2; --avatar-hair: #5A3424; --avatar-shirt: #CF6A33;
-  --t0: #CF6A33; --t1: #B9543F; --t2: #E0954E; --t3: #A9703F; --t4: #D98466; --t5: #8C4B36; --t6: #E2A65C; --t7: #6E4532;
+  --t0: #CF6A33; --t1: #B9543F; --t2: #E0954E; --t3: #A9703F; --t4: #D98466; --t5: #8C4B36; --t6: #E2A65C; --t7: #6E4532; --t8: #CF8A82; --t9: #8F9C66; --t10: #9C6A7C;
   --theme-color: #FCF3E8; color-scheme: light;
 }
 html[data-theme="sorbet"] {
@@ -306,7 +317,7 @@ html[data-theme="sorbet"] {
   --accent: #E2457A; --accent-ink: #FFFFFF; --gold: #F5A623;
   --tile-base: #FFFFFF; --tile-mix: 20%; --shadow: 0 2px 10px rgba(226,69,122,.10);
   --avatar-bg: #FFE1E8; --avatar-hair: #6B3A4E; --avatar-shirt: #7CCB4E;
-  --t0: #FF5D73; --t1: #F5A623; --t2: #6DBE45; --t3: #36AEE0; --t4: #9474E6; --t5: #EE62AE; --t6: #23B99B; --t7: #A9755A;
+  --t0: #FF5D73; --t1: #F5A623; --t2: #6DBE45; --t3: #36AEE0; --t4: #9474E6; --t5: #EE62AE; --t6: #23B99B; --t7: #A9755A; --t8: #F0899E; --t9: #7FC28E; --t10: #A784D9;
   --theme-color: #FFF3E6; color-scheme: light;
 }
 html[data-theme="fresh"] {
@@ -317,7 +328,7 @@ html[data-theme="fresh"] {
   --accent: #2F9967; --accent-ink: #FFFFFF; --gold: #EDAE35;
   --tile-base: #F5F7F4; --tile-mix: 14%; --shadow: 0 1px 2px rgba(20,40,30,.06), 0 4px 14px rgba(20,40,30,.05);
   --avatar-bg: #EAF2E7; --avatar-hair: #4B3A33; --avatar-shirt: #5DB27A;
-  --t0: #E06666; --t1: #E5A93A; --t2: #55AC72; --t3: #4A9BCF; --t4: #8A78C2; --t5: #DC7AAA; --t6: #3EAE9F; --t7: #A8845F;
+  --t0: #E06666; --t1: #E5A93A; --t2: #55AC72; --t3: #4A9BCF; --t4: #8A78C2; --t5: #DC7AAA; --t6: #3EAE9F; --t7: #A8845F; --t8: #DA8C9A; --t9: #7FA86A; --t10: #8F6FA8;
   --theme-color: #FFFFFF; color-scheme: light;
 }
 html[data-theme="matcha"] {
@@ -328,7 +339,7 @@ html[data-theme="matcha"] {
   --accent: #BCDB9C; --accent-ink: #1F3027; --gold: #F1CB70;
   --tile-base: rgba(255,255,255,.06); --tile-mix: 14%; --shadow: none;
   --avatar-bg: rgba(255,255,255,.1); --avatar-hair: #3B2E2A; --avatar-shirt: #BCDB9C;
-  --t0: #BCDB9C; --t1: #F1CB70; --t2: #F2A9B6; --t3: #9ECBE2; --t4: #C8B4E8; --t5: #E9DCC3; --t6: #8ED3C2; --t7: #D9B48B;
+  --t0: #BCDB9C; --t1: #F1CB70; --t2: #F2A9B6; --t3: #9ECBE2; --t4: #C8B4E8; --t5: #E9DCC3; --t6: #8ED3C2; --t7: #D9B48B; --t8: #E9B3BE; --t9: #A8C98A; --t10: #C3A3C9;
   --theme-color: #46634F; color-scheme: dark;
 }
 html[data-theme="blueberry"] {
@@ -339,7 +350,7 @@ html[data-theme="blueberry"] {
   --accent: #F592B5; --accent-ink: #1D2046; --gold: #F8D37C;
   --tile-base: rgba(255,255,255,.06); --tile-mix: 14%; --shadow: none;
   --avatar-bg: rgba(255,255,255,.1); --avatar-hair: #2F2440; --avatar-shirt: #9FD9A9;
-  --t0: #F592B5; --t1: #F8D37C; --t2: #9FD9A9; --t3: #8DC7F3; --t4: #C4ABF6; --t5: #F7B9CB; --t6: #86DFD0; --t7: #E8D6BD;
+  --t0: #F592B5; --t1: #F8D37C; --t2: #9FD9A9; --t3: #8DC7F3; --t4: #C4ABF6; --t5: #F7B9CB; --t6: #86DFD0; --t7: #E8D6BD; --t8: #F2A9BE; --t9: #A9D7A0; --t10: #B7A0E6;
   --theme-color: #454A8A; color-scheme: dark;
 }
 

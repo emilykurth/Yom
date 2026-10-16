@@ -1,5 +1,5 @@
 // App files: network-first (fresh when online, cached when offline). Fonts: cache-first.
-const CACHE = 'tastebook-v2-4';
+const CACHE = 'tastebook-v2-5';
 const ASSETS = [
   './', './index.html', './style.css', './app.js', './icons.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'
