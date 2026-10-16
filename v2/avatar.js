@@ -3,11 +3,11 @@
 const AVATAR_OPTIONS = {
   hair: [
     { id: 'bun', label: 'Bun' },
+    { id: 'messy', label: 'Messy bun' },
     { id: 'bob', label: 'Bob' },
     { id: 'long', label: 'Long' },
-    { id: 'short', label: 'Short' },
+    { id: 'wavy', label: 'Wavy' },
     { id: 'curly', label: 'Curly' },
-    { id: 'none', label: 'None' },
   ],
   eyes: [
     { id: 'sleepy', label: 'Sleepy' },
@@ -30,13 +30,17 @@ const AVATAR_OPTIONS = {
   ],
   skin: ['#F6D9C6', '#EDC3A2', '#D9A47D', '#BB7E58', '#8F5D3E', '#5F3D2A'],
   hairColor: ['#2B1D17', '#5A3424', '#8A5733', '#C68E52', '#E6C483', '#B5513A', '#9A9494', '#D98E9F'],
+  bg: ['#CDD6BC', '#C5D3DC', '#D7CCE2', '#EBC4C0', '#F0D6A8', '#E9E0D4', '#8C6450', '#4E3A33'],
   shirt: ['#CF6A33', '#D2867F', '#8F9C66', '#9C6A7C', '#6F8FA6', '#E0A24E', '#3A2519', '#EDE3D6'],
 };
-const DEFAULT_AVATAR = { hair: 'bun', hairColor: 1, eyes: 'sleepy', mouth: 'grin', extra: 'none', skin: 0, shirt: 0 };
+const DEFAULT_AVATAR = { hair: 'bun', hairColor: 1, eyes: 'sleepy', mouth: 'grin', extra: 'none', skin: 0, shirt: 0, bg: 0 };
 
 let avatarUid = 0;
 function avatarSVG(input, viewBox = '0 0 200 200') {
   const a = { ...DEFAULT_AVATAR, ...(input || {}) };
+  if (!AVATAR_OPTIONS.hair.some(h => h.id === a.hair)) a.hair = a.hair === 'short' ? 'bob' : 'bun';
+  const bg = AVATAR_OPTIONS.bg[a.bg] || AVATAR_OPTIONS.bg[0];
+  const longHair = a.hair === 'long' || a.hair === 'wavy';
   const skin = AVATAR_OPTIONS.skin[a.skin] || AVATAR_OPTIONS.skin[0];
   const hc = AVATAR_OPTIONS.hairColor[a.hairColor] || AVATAR_OPTIONS.hairColor[0];
   const shirt = AVATAR_OPTIONS.shirt[a.shirt] || AVATAR_OPTIONS.shirt[0];
@@ -48,10 +52,10 @@ function avatarSVG(input, viewBox = '0 0 200 200') {
     bun: `<circle cx="66" cy="44" r="20" fill="${hc}"/><ellipse cx="100" cy="86" rx="54" ry="52" fill="${hc}"/>`,
     bob: `<path d="M44 92 C44 50 70 36 100 36 C130 36 156 50 156 92 V138 a10 10 0 0 1 -10 10 H54 a10 10 0 0 1 -10 -10 Z" fill="${hc}"/>`,
     long: `<path d="M42 96 C42 50 70 34 100 34 C130 34 158 50 158 96 V176 H42 Z" fill="${hc}"/>`,
-    short: '',
+    wavy: `<path d="M44 96 C44 50 70 34 100 34 C130 34 156 50 156 96 C166 108 148 120 158 132 C168 144 150 156 160 168 L162 180 H38 L40 168 C50 156 32 144 42 132 C52 120 34 108 44 96 Z" fill="${hc}"/>`,
+    messy: `<ellipse cx="100" cy="86" rx="54" ry="52" fill="${hc}"/><circle cx="100" cy="36" r="19" fill="${hc}"/><circle cx="86" cy="30" r="11" fill="${hc}"/><circle cx="115" cy="28" r="10" fill="${hc}"/><path d="M92 18 q-6 -8 -14 -6 M110 16 q4 -9 13 -8 M120 34 q10 -2 14 -10" fill="none" stroke="${hc}" stroke-width="4" stroke-linecap="round"/>`,
     curly: [[58, 70], [66, 52], [82, 40], [100, 36], [118, 40], [134, 52], [142, 70], [148, 90], [52, 90], [146, 110], [54, 110]]
       .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="17" fill="${hc}"/>`).join(''),
-    none: '',
   }[a.hair] || '';
 
   // hair that sits in front (fringe / cap)
@@ -59,9 +63,9 @@ function avatarSVG(input, viewBox = '0 0 200 200') {
     bun: `<path d="M56 84 C58 52 80 42 100 42 C124 42 144 56 144 78 C128 64 112 60 98 58 C86 64 72 74 56 84 Z" fill="${hc}"/>`,
     bob: `<path d="M55 90 C54 56 76 44 100 44 C124 44 146 56 145 90 C146 80 140 72 132 70 H68 C60 72 54 80 55 90 Z" fill="${hc}"/>`,
     long: `<path d="M56 88 C56 54 78 42 100 42 C126 42 146 58 144 90 C136 70 118 58 104 56 C96 68 76 80 56 88 Z" fill="${hc}"/>`,
-    short: `<path d="M55 92 C52 56 76 40 100 40 C126 40 150 56 145 92 C140 74 128 62 112 60 C100 66 78 64 66 70 C60 76 56 84 55 92 Z" fill="${hc}"/>`,
+    wavy: `<path d="M56 92 C56 54 78 42 100 42 C126 42 146 58 144 92 C140 80 134 72 126 70 C118 78 110 64 100 66 C90 74 80 62 72 72 C64 76 58 84 56 92 Z" fill="${hc}"/>`,
+    messy: `<path d="M56 86 C58 54 80 42 100 42 C124 42 144 56 144 82 C130 66 112 60 96 60 C84 66 70 74 56 86 Z" fill="${hc}"/><path d="M60 82 q-6 14 0 26 q4 8 0 16 M141 80 q6 14 -1 26" fill="none" stroke="${hc}" stroke-width="5" stroke-linecap="round"/>`,
     curly: [[70, 62], [86, 54], [102, 52], [118, 56], [132, 66]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="12" fill="${hc}"/>`).join(''),
-    none: '',
   }[a.hair] || '';
 
   const eyes = {
@@ -88,13 +92,13 @@ function avatarSVG(input, viewBox = '0 0 200 200') {
 
   return `<svg viewBox="${viewBox}" aria-hidden="true">
   <defs><clipPath id="${clip}"><circle cx="100" cy="100" r="96"/></clipPath></defs>
-  <circle class="av-bg" cx="100" cy="100" r="96"/>
+  <circle class="av-bg" cx="100" cy="100" r="96" style="fill:${bg}"/>
   <g clip-path="url(#${clip})">
-    ${a.hair === 'long' ? back : ''}
+    ${longHair ? back : ''}
     <path d="M44 210 C44 168 70 152 100 152 C130 152 156 168 156 210 Z" fill="${shirt}"/>
     <rect x="88" y="128" width="24" height="30" rx="8" fill="${skin}"/>
     <rect x="88" y="128" width="24" height="14" fill="#000" fill-opacity=".08"/>
-    ${a.hair === 'long' ? '' : back}
+    ${longHair ? '' : back}
     <circle cx="55" cy="102" r="10" fill="${skin}"/>
     <circle cx="145" cy="102" r="10" fill="${skin}"/>
     <ellipse cx="100" cy="100" rx="44" ry="46" fill="${skin}"/>

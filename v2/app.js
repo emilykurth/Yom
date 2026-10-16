@@ -795,14 +795,14 @@ function openSettings() {
         preview.innerHTML = avatarSVG(av);
         editor.innerHTML = shapeRow('hair', 'Hair', '0 0 200 200') + colourRow('hairColor', 'Hair colour')
           + shapeRow('eyes', 'Eyes', FACE) + shapeRow('mouth', 'Mouth', FACE) + shapeRow('extra', 'Extras', FACE)
-          + colourRow('skin', 'Skin') + colourRow('shirt', 'Top');
+          + colourRow('skin', 'Skin') + colourRow('shirt', 'Top') + colourRow('bg', 'Background');
       };
       drawAvatar();
       editor.addEventListener('click', e => {
         const b = e.target.closest('[data-part]');
         if (!b) return;
         const part = b.dataset.part;
-        av[part] = /^(skin|hairColor|shirt)$/.test(part) ? +b.dataset.val : b.dataset.val;
+        av[part] = /^(skin|hairColor|shirt|bg)$/.test(part) ? +b.dataset.val : b.dataset.val;
         drawAvatar();
       });
       const pick = arr => arr[Math.floor(Math.random() * arr.length)];
@@ -812,6 +812,7 @@ function openSettings() {
         av.hairColor = Math.floor(Math.random() * AVATAR_OPTIONS.hairColor.length);
         av.skin = Math.floor(Math.random() * AVATAR_OPTIONS.skin.length);
         av.shirt = Math.floor(Math.random() * AVATAR_OPTIONS.shirt.length);
+        av.bg = Math.floor(Math.random() * AVATAR_OPTIONS.bg.length);
         drawAvatar();
       };
       $('#theme-grid', wrap).addEventListener('click', e => {
