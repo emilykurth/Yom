@@ -40,6 +40,20 @@ const TINTS = ['#E9A68C', '#E8C27D', '#A8CBA2', '#9DC4D3', '#B9AEE0', '#E3A7C0',
 // earlier colour choices (v1 pastels / grey) map onto the new muted palette
 const OLD_TINTS = { '#FFD3DA': 0, '#FFE0C2': 0, '#FFF0B3': 1, '#D4F0C6': 2, '#C9E8F5': 3, '#DAD3FA': 4, '#F7D0EC': 5, '#E9DCCD': 6,
   '#F5C6CE': 5, '#F6D9B8': 0, '#F1E6A8': 1, '#C9E6BD': 2, '#BFDDEE': 3, '#D2CAF3': 4, '#EEC6E2': 5 };
+const THEMES = [
+  { id: 'sorbet', name: 'Sorbet', sw: ['#FFF3E6', '#E2457A', '#F5A623', '#6DBE45'] },
+  { id: 'fresh', name: 'Fresh', sw: ['#FFFFFF', '#2F9967', '#EDAE35', '#E06666'] },
+  { id: 'matcha', name: 'Matcha', sw: ['#324A3B', '#BCDB9C', '#F1CB70', '#F2A9B6'] },
+  { id: 'blueberry', name: 'Blueberry', sw: ['#30346A', '#F592B5', '#F8D37C', '#9FD9A9'] },
+];
+function applyTheme(id) {
+  if (!THEMES.some(t => t.id === id)) id = THEMES[0].id;
+  document.documentElement.dataset.theme = id;
+  try { localStorage.setItem('tb2-theme', id); } catch {}
+  const tc = getComputedStyle(document.documentElement).getPropertyValue('--theme-color').trim();
+  const meta = document.querySelector('meta[name=theme-color]');
+  if (meta && tc) meta.content = tc;
+}
 const SUGGESTED = ['Taste', 'Flavor', 'Texture', 'Sweetness', 'Price / value', 'Visual appeal', 'Portion size', 'Freshness', 'Temperature', 'Thickness', 'Crust', 'Sauce', 'Service'];
 const defaultCounts = name => !/price|value|cost|service/i.test(name);
 
@@ -53,14 +67,16 @@ function iconHTML(c) {
   if (k) return `<span class="icon"><svg viewBox="0 0 64 64">${FOOD_ICONS[k].svg}</svg></span>`;
   return `<span class="icon emoji">${esc(c?.emoji || '🍽️')}</span>`;
 }
-function tintOf(c) {
-  if (!c) return TINTS[0];
-  if (TINTS.includes(c.color)) return c.color;
-  if (c.color in OLD_TINTS) return TINTS[OLD_TINTS[c.color]];
-  const i = Math.max(0, S.cats.findIndex(x => x.id === c.id));
-  return TINTS[i % (TINTS.length - 1)];
+// Categories store one of TINTS; each theme supplies its own colour for that slot (--t0 … --t7).
+function tintIndex(c) {
+  if (!c) return 0;
+  const i = TINTS.indexOf(c.color);
+  if (i >= 0) return i;
+  if (c.color in OLD_TINTS) return OLD_TINTS[c.color];
+  return Math.max(0, S.cats.findIndex(x => x.id === c.id)) % TINTS.length;
 }
-const tintStyle = c => `style="--tint:${tintOf(c)}"`;
+const tintOf = c => TINTS[tintIndex(c)];
+const tintStyle = c => `style="--tint:var(--t${tintIndex(c)})"`;
 
 /* ---------- storage (IndexedDB) ---------- */
 let db;
@@ -344,7 +360,7 @@ function openSheet({ title, mid, body, saveLabel, onSave, cancelLabel = 'Cancel'
 /* ---------- category editor ---------- */
 function openCategoryEditor(existing, prefillName = '') {
   const d = existing ? structuredClone(existing) : {
-    id: uid(), name: prefillName, emoji: '🍽️', icon: 'plate', color: TINTS[S.cats.length % (TINTS.length - 1)], qualities: [], createdAt: Date.now(),
+    id: uid(), name: prefillName, emoji: '🍽️', icon: 'plate', color: TINTS[S.cats.length % TINTS.length], qualities: [], createdAt: Date.now(),
   };
   if (existing && !d.icon) d.icon = iconKey(d) || '';
   if (existing) d.color = tintOf(existing);
@@ -368,12 +384,12 @@ function openCategoryEditor(existing, prefillName = '') {
     <input id="f-name" type="text" placeholder="Name of food, e.g. Hamburgers..." value="${esc(d.name)}" maxlength="40" autocomplete="off">
 
     <p class="field-cap">Icon</p>
-    <div class="icon-grid" id="icon-grid" style="--tint:${d.color}">${Object.entries(FOOD_ICONS).map(([k, v]) =>
+    <div class="icon-grid" id="icon-grid" ${tintStyle(d)}>${Object.entries(FOOD_ICONS).map(([k, v]) =>
       `<button type="button" class="icon-opt ${k === d.icon ? 'on' : ''}" data-icon="${k}" aria-label="${esc(v.label)}"><svg class="icon" viewBox="0 0 64 64">${v.svg}</svg></button>`).join('')}</div>
     <div class="emoji-row">Or use any emoji instead <input id="f-emoji" type="text" maxlength="12" placeholder="🙂" autocomplete="off"></div>
 
     <p class="field-cap">Icon colour</p>
-    <div class="swatches">${TINTS.map(col => `<button type="button" class="swatch ${col === d.color ? 'on' : ''}" style="--c:${col}" data-color="${col}" aria-label="Colour"></button>`).join('')}</div>
+    <div class="swatches">${TINTS.map((col, i) => `<button type="button" class="swatch ${col === d.color ? 'on' : ''}" style="--c:var(--t${i})" data-color="${col}" aria-label="Colour"></button>`).join('')}</div>
 
     <p class="field-cap">Qualities you'll rate <small>■ = counts in score</small></p>
     <p class="hint">Untick the box for things you just want to remember, like price.</p>
@@ -402,7 +418,7 @@ function openCategoryEditor(existing, prefillName = '') {
     },
     mount: (wrap, close) => {
       const pv = $('#pv', wrap), qList = $('#q-list', wrap), chips = $('#q-chips', wrap);
-      const drawPreview = () => { pv.innerHTML = iconHTML(d); pv.style.setProperty('--tint', d.color); $('#icon-grid', wrap).style.setProperty('--tint', d.color); };
+      const drawPreview = () => { const t = `var(--t${tintIndex(d)})`; pv.innerHTML = iconHTML(d); pv.style.setProperty('--tint', t); $('#icon-grid', wrap).style.setProperty('--tint', t); };
 
       const drawQualities = () => {
         qList.innerHTML = d.qualities.map(q => `
@@ -710,6 +726,9 @@ async function importBackup(file) {
 function openSettings() {
   const body = `<div class="settings">
     <input id="s-name" type="text" placeholder="Your name..." value="${esc(S.profile.name === 'My Tastebook' ? '' : S.profile.name)}" maxlength="40" autocomplete="off">
+    <p class="field-cap">Colour theme</p>
+    <div class="theme-grid" id="theme-grid">${THEMES.map(t => `<button type="button" class="theme-opt ${document.documentElement.dataset.theme === t.id ? 'on' : ''}" data-theme-id="${t.id}">
+      <span class="sw">${t.sw.map(c => `<i style="background:${c}"></i>`).join('')}</span><span>${t.name}</span></button>`).join('')}</div>
     <p class="field-cap">Backup</p>
     <p>Everything is saved on this phone only. Save a backup now and then (to Files or iCloud Drive) — it includes your photos.</p>
     <div class="actions">
@@ -724,11 +743,19 @@ function openSettings() {
     title: 'Profile',
     body,
     onSave: async () => {
-      S.profile = { ...S.profile, name: $('#s-name').value.trim() };
+      S.profile = { ...S.profile, name: $('#s-name').value.trim(), theme: document.documentElement.dataset.theme };
       await dbPut('meta', S.profile, 'profile');
       render();
     },
     mount: (wrap, close) => {
+      const startTheme = document.documentElement.dataset.theme;
+      $('#theme-grid', wrap).addEventListener('click', e => {
+        const b = e.target.closest('[data-theme-id]');
+        if (!b) return;
+        applyTheme(b.dataset.themeId);
+        $$('.theme-opt', wrap).forEach(x => x.classList.toggle('on', x === b));
+      });
+      $('[data-close]', wrap).addEventListener('click', () => applyTheme(startTheme));
       $('#s-export', wrap).onclick = () => exportBackup().catch(e => toast(e.message));
       $('#s-import', wrap).addEventListener('change', async e => {
         const f = e.target.files?.[0];
@@ -766,6 +793,7 @@ window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); }
   try {
     db = await openDB();
     await loadState();
+    applyTheme(S.profile.theme || localStorage.getItem('tb2-theme') || 'sorbet');
     render();
     navigator.storage?.persist?.().catch(() => {});
   } catch (e) {
