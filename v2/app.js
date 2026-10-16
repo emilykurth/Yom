@@ -41,6 +41,7 @@ const TINTS = ['#E9A68C', '#E8C27D', '#A8CBA2', '#9DC4D3', '#B9AEE0', '#E3A7C0',
 const OLD_TINTS = { '#FFD3DA': 0, '#FFE0C2': 0, '#FFF0B3': 1, '#D4F0C6': 2, '#C9E8F5': 3, '#DAD3FA': 4, '#F7D0EC': 5, '#E9DCCD': 6,
   '#F5C6CE': 5, '#F6D9B8': 0, '#F1E6A8': 1, '#C9E6BD': 2, '#BFDDEE': 3, '#D2CAF3': 4, '#EEC6E2': 5 };
 const THEMES = [
+  { id: 'cinnamon', name: 'Cinnamon', sw: ['#FCF3E8', '#CF6A33', '#B9543F', '#E0954E'] },
   { id: 'sorbet', name: 'Sorbet', sw: ['#FFF3E6', '#E2457A', '#F5A623', '#6DBE45'] },
   { id: 'fresh', name: 'Fresh', sw: ['#FFFFFF', '#2F9967', '#EDAE35', '#E06666'] },
   { id: 'matcha', name: 'Matcha', sw: ['#324A3B', '#BCDB9C', '#F1CB70', '#F2A9B6'] },
@@ -793,7 +794,7 @@ window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); }
   try {
     db = await openDB();
     await loadState();
-    applyTheme(S.profile.theme || localStorage.getItem('tb2-theme') || 'sorbet');
+    applyTheme(S.profile.theme || localStorage.getItem('tb2-theme') || 'cinnamon');
     render();
     navigator.storage?.persist?.().catch(() => {});
   } catch (e) {
