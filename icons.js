@@ -20,7 +20,6 @@ const FOOD_ICONS = {
   noodles: { label: 'Noodles / ramen', emoji: '🍜', svg: '<path d="M8 30 H56 a24 22 0 0 1 -48 0 Z"/><path d="M38 6 L30 30 M46 8 L36 30" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-opacity=".6"/><rect x="22" y="52" width="20" height="4" rx="2"/>' },
   sushi: { label: 'Sushi', emoji: '🍣', svg: '<rect x="10" y="30" width="44" height="18" rx="9"/><path d="M12 32 q20 -16 40 0 Z" fill-opacity=".6"/><rect x="28" y="30" width="8" height="18" fill-opacity=".45"/>' },
   chicken: { label: 'Chicken', emoji: '🍗', svg: '<ellipse cx="26" cy="28" rx="16" ry="18" transform="rotate(-35 26 28)"/><rect x="36" y="38" width="7" height="18" rx="3" transform="rotate(-45 40 47)" fill-opacity=".7"/><circle cx="51" cy="50" r="4" fill-opacity=".7"/><circle cx="47" cy="54" r="4" fill-opacity=".7"/>' },
-  egg: { label: 'Breakfast', emoji: '🍳', svg: '<path d="M14 26 q-6 14 8 22 q8 6 18 2 q14 -4 10 -18 q-2 -10 -14 -12 q-14 -4 -22 6 Z"/><circle cx="32" cy="32" r="8" fill-opacity=".55"/>' },
   bread: { label: 'Bread / pastry', emoji: '🍞', svg: '<path d="M12 28 a10 10 0 0 1 4 -14 H48 a10 10 0 0 1 4 14 V52 H12 Z"/><path d="M24 22 v6 M32 22 v6 M40 22 v6" stroke="#000" stroke-opacity=".18" stroke-width="2.6" stroke-linecap="round"/>' },
   cheese: { label: 'Cheese', emoji: '🧀', svg: '<path d="M8 30 L46 14 L56 30 V50 H8 Z"/><circle cx="22" cy="40" r="4" fill-opacity=".5"/><circle cx="40" cy="38" r="3" fill-opacity=".5"/><circle cx="46" cy="46" r="2" fill-opacity=".5"/>' },
   strawberry: { label: 'Strawberry', emoji: '🍓', svg: '<path d="M32 58 C14 46 10 30 16 22 C22 16 42 16 48 22 C54 30 50 46 32 58 Z"/><path d="M20 20 L32 12 L44 20 L36 22 L32 18 L28 22 Z" fill-opacity=".6"/><circle cx="26" cy="32" r="1.6" fill="#000" fill-opacity=".2"/><circle cx="36" cy="30" r="1.6" fill="#000" fill-opacity=".2"/><circle cx="31" cy="40" r="1.6" fill="#000" fill-opacity=".2"/><circle cx="40" cy="40" r="1.6" fill="#000" fill-opacity=".2"/><circle cx="24" cy="42" r="1.6" fill="#000" fill-opacity=".2"/>' },
@@ -33,7 +32,7 @@ EMOJI_TO_ICON['🍦'] = 'icecream'; EMOJI_TO_ICON['🍨'] = 'icecream'; EMOJI_TO
 EMOJI_TO_ICON['🥯'] = 'bread'; EMOJI_TO_ICON['🥨'] = 'bread'; EMOJI_TO_ICON['🍵'] = 'coffee';
 EMOJI_TO_ICON['🍺'] = 'cocktail'; EMOJI_TO_ICON['🍷'] = 'cocktail'; EMOJI_TO_ICON['🍹'] = 'cocktail';
 EMOJI_TO_ICON['🌯'] = 'taco'; EMOJI_TO_ICON['🍲'] = 'noodles'; EMOJI_TO_ICON['🍝'] = 'noodles'; EMOJI_TO_ICON['🍛'] = 'bowl';
-EMOJI_TO_ICON['🥞'] = 'egg'; EMOJI_TO_ICON['🧇'] = 'egg'; EMOJI_TO_ICON['🍱'] = 'sushi'; EMOJI_TO_ICON['🥟'] = 'sushi';
+EMOJI_TO_ICON['🥞'] = 'plate'; EMOJI_TO_ICON['🧇'] = 'plate'; EMOJI_TO_ICON['🍳'] = 'plate'; EMOJI_TO_ICON['🍱'] = 'sushi'; EMOJI_TO_ICON['🥟'] = 'sushi';
 
 /* Illustrated avatar, in the same grey style. */
 const AVATAR_SVG = `<svg viewBox="0 0 200 200" aria-hidden="true">

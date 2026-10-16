@@ -481,7 +481,7 @@ function openCategoryEditor(existing, prefillName = '') {
       ['cookie', 'cookie'], ['cake', 'cake'], ['cupcake', 'cupcake'], ['ice cream', 'icecream'], ['gelato', 'icecream'], ['pie', 'pie'],
       ['tart', 'pie'], ['taco', 'taco'], ['burrito', 'taco'], ['fries', 'fries'], ['chips', 'fries'], ['hot dog', 'hotdog'],
       ['sandwich', 'sandwich'], ['toastie', 'sandwich'], ['ramen', 'noodles'], ['noodle', 'noodles'], ['pho', 'noodles'], ['pasta', 'noodles'],
-      ['sushi', 'sushi'], ['chicken', 'chicken'], ['wing', 'chicken'], ['egg', 'egg'], ['breakfast', 'egg'], ['croissant', 'bread'],
+      ['sushi', 'sushi'], ['chicken', 'chicken'], ['wing', 'chicken'],  ['croissant', 'bread'],
       ['bread', 'bread'], ['bagel', 'bread'], ['cheese', 'cheese'], ['strawberr', 'strawberry'], ['cocktail', 'cocktail'], ['margarita', 'cocktail'],
       ['salad', 'bowl'], ['bowl', 'bowl'], ['burger', 'burger'], ['pizza', 'pizza']];
     const hit = guess.find(([w]) => n.includes(w));
@@ -500,7 +500,7 @@ function openCategoryEditor(existing, prefillName = '') {
 
     <p class="field-cap">Icon</p>
     <div class="icon-grid" id="icon-grid" ${tintStyle(d)}>${Object.entries(FOOD_ICONS).map(([k, v]) =>
-      `<button type="button" class="icon-opt ${k === d.icon ? 'on' : ''}" data-icon="${k}" aria-label="${esc(v.label)}"><svg class="icon" viewBox="0 0 64 64">${v.svg}</svg></button>`).join('')}</div>
+      `<button type="button" class="icon-opt ${k === d.icon ? 'on' : ''}" data-icon="${k}" aria-label="${esc(v.label)}"><svg viewBox="0 0 64 64" width="34" height="34" aria-hidden="true">${v.svg}</svg></button>`).join('')}</div>
     <div class="emoji-row">Or use any emoji instead <input id="f-emoji" type="text" maxlength="12" placeholder="🙂" autocomplete="off"></div>
 
     <p class="field-cap">Icon colour</p>
