@@ -41,8 +41,8 @@ const TINTS = ['#E9A68C', '#E8C27D', '#A8CBA2', '#9DC4D3', '#B9AEE0', '#E3A7C0',
 const OLD_TINTS = { '#FFD3DA': 0, '#FFE0C2': 0, '#FFF0B3': 1, '#D4F0C6': 2, '#C9E8F5': 3, '#DAD3FA': 4, '#F7D0EC': 5, '#E9DCCD': 6,
   '#F5C6CE': 5, '#F6D9B8': 0, '#F1E6A8': 1, '#C9E6BD': 2, '#BFDDEE': 3, '#D2CAF3': 4, '#EEC6E2': 5 };
 const THEMES = [
-  { id: 'warm-dark', name: 'Warm dark', sw: ['#3E2A20', '#E2804A', '#EBB25A', '#E1A2A2'] },
   { id: 'cinnamon', name: 'Warm', sw: ['#FCF3E8', '#CF6A33', '#B9543F', '#E0954E'] },
+  { id: 'warm-dark', name: 'Warm dark', sw: ['#3E2A20', '#E2804A', '#EBB25A', '#E1A2A2'] },
   { id: 'sorbet', name: 'Sorbet', sw: ['#FFF3E6', '#E2457A', '#F5A623', '#6DBE45'] },
   { id: 'fresh', name: 'Fresh', sw: ['#FFFFFF', '#2F9967', '#EDAE35', '#E06666'] },
   { id: 'matcha', name: 'Matcha', sw: ['#324A3B', '#BCDB9C', '#F1CB70', '#F2A9B6'] },
@@ -98,14 +98,17 @@ function openDB() {
 }
 const store = (name, mode = 'readonly') => db.transaction(name, mode).objectStore(name);
 const req = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
-const dbAll = s => req(store(s).getAll());
-const dbGet = (s, k) => req(store(s).get(k));
-const dbPut = (s, v, k) => req(store(s, 'readwrite').put(v, k));
-const dbDel = (s, k) => req(store(s, 'readwrite').delete(k));
-const dbClear = s => req(store(s, 'readwrite').clear());
+// If IndexedDB isn't available (e.g. some private modes), keep data in memory for this visit.
+const MEM = { categories: new Map(), ratings: new Map(), photos: new Map(), meta: new Map() };
+const memKey = (s, v, k) => (k !== undefined ? k : v.id);
+const dbAll = s => (db ? req(store(s).getAll()) : Promise.resolve([...MEM[s].values()]));
+const dbGet = (s, k) => (db ? req(store(s).get(k)) : Promise.resolve(MEM[s].get(k)));
+const dbPut = (s, v, k) => (db ? req(store(s, 'readwrite').put(v, k)) : Promise.resolve(MEM[s].set(memKey(s, v, k), v)));
+const dbDel = (s, k) => (db ? req(store(s, 'readwrite').delete(k)) : Promise.resolve(MEM[s].delete(k)));
+const dbClear = s => (db ? req(store(s, 'readwrite').clear()) : Promise.resolve(MEM[s].clear()));
 
 /* ---------- state ---------- */
-const S = { cats: [], ratings: [], profile: { name: '' }, photoURLs: new Map(), sort: {} };
+const S = { cats: [], ratings: [], profile: { name: '' }, photoURLs: new Map(), sort: {}, route: null };
 
 async function loadState() {
   S.cats = (await dbAll('categories')).sort((a, b) => a.createdAt - b.createdAt);
@@ -143,6 +146,21 @@ async function hydratePhotos(root) {
 }
 
 /* ---------- UI bits ---------- */
+function ask(message, okLabel = 'Delete') {
+  return new Promise(resolve => {
+    const el = document.createElement('div');
+    el.className = 'ask-wrap';
+    el.innerHTML = `<div class="ask" role="alertdialog" aria-modal="true">
+      <p>${esc(message).replace(/\n/g, '<br>')}</p>
+      <div class="actions"><button class="btn ghost" data-no>Cancel</button><button class="btn" data-yes>${esc(okLabel)}</button></div></div>`;
+    document.body.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('open'));
+    const done = v => { el.remove(); resolve(v); };
+    $('[data-no]', el).onclick = () => done(false);
+    $('[data-yes]', el).onclick = () => done(true);
+    el.addEventListener('click', e => { if (e.target === el) done(false); });
+  });
+}
 let toastTimer;
 function toast(msg) {
   const t = $('#toast');
@@ -200,9 +218,16 @@ function byScore(dir) {
    ========================================================= */
 const app = $('#app');
 
+/* Simple router: the open category lives in S.route; the URL hash mirrors it when the browser allows. */
+function go(catId) {
+  S.route = catId || null;
+  try { history.replaceState(null, '', catId ? `#c-${catId}` : location.pathname + location.search); } catch {}
+  render();
+  window.scrollTo(0, 0);
+}
+
 function render() {
-  const m = location.hash.match(/^#\/c\/(.+)$/);
-  if (m) renderCategory(decodeURIComponent(m[1]));
+  if (S.route) renderCategory(S.route);
   else renderHome();
 }
 
@@ -220,6 +245,7 @@ function renderHome() {
     <p class="stat-line">${plural(S.cats.length, 'food')} · ${plural(S.ratings.length, 'rating')} · ${plural(places, 'place')}</p>
 
     <h2 class="prompt">What would you like to rate today?</h2>
+    ${window.TB_DEMO_SEED && S.ratings.some(r => r.sample) ? `<div class="demo-note"><span>These are sample ratings so you can click around.</span><button data-action="clear-demo">Clear samples</button></div>` : ''}
     <form class="add-bar" id="add-bar" autocomplete="off">
       <input id="add-name" type="text" placeholder="Add a new category..." maxlength="40" enterkeyhint="go">
       <button type="submit" aria-label="Add category">${UI.plus}</button>
@@ -228,11 +254,11 @@ function renderHome() {
     <div class="grid2">
       ${S.cats.map(c => {
         const avg = catOverall(c.id);
-        return `<a class="tile" href="#/c/${encodeURIComponent(c.id)}" ${tintStyle(c)} aria-label="${esc(c.name)}">
+        return `<button class="tile" data-action="open-cat" data-id="${c.id}" ${tintStyle(c)} aria-label="${esc(c.name)}">
           ${avg != null ? `<span class="tile-score">${fmt(avg)}</span>` : ''}
           ${iconHTML(c)}
           <span class="tile-label">${esc(c.name)}</span>
-        </a>`;
+        </button>`;
       }).join('')}
     </div>
     ${S.cats.length ? '' : `<p class="empty"><b>Nothing here yet</b>Type a food above — like “Strawberry smoothie” — and tap +.</p>`}
@@ -251,7 +277,7 @@ function renderHome() {
 
 function renderCategory(id) {
   const c = catById(id);
-  if (!c) { location.hash = ''; return; }
+  if (!c) { S.route = null; renderHome(); return; }
   const rs = catRatings(id);
   const avg = catOverall(id);
   const sort = S.sort[id] || 'recent';
@@ -284,7 +310,7 @@ function renderCategory(id) {
 
   app.innerHTML = `
     <div class="nav">
-      <a class="round-btn" href="#" aria-label="Back">${UI.back}</a>
+      <button class="round-btn" data-action="home" aria-label="Back">${UI.back}</button>
       <button class="round-btn" data-action="edit-cat" data-id="${c.id}" aria-label="Edit category">${UI.edit}</button>
     </div>
     <div class="big-circle" ${tintStyle(c)}>${iconHTML(c)}</div>
@@ -421,7 +447,7 @@ function openCategoryEditor(existing, prefillName = '') {
       const i = S.cats.findIndex(c => c.id === d.id);
       if (i >= 0) S.cats[i] = d; else S.cats.push(d);
       if (existing) render();
-      else location.hash = `#/c/${encodeURIComponent(d.id)}`;
+      else go(d.id);
       toast(existing ? 'Saved' : `${d.name} added`);
     },
     mount: (wrap, close) => {
@@ -494,14 +520,13 @@ function openCategoryEditor(existing, prefillName = '') {
       const del = $('#cat-del', wrap);
       if (del) del.onclick = async () => {
         const n = catRatings(d.id).length;
-        if (!confirm(`Delete “${existing.name}”${n ? ` and its ${plural(n, 'rating')}` : ''}? This can't be undone.`)) return;
+        if (!(await ask(`Delete “${existing.name}”${n ? ` and its ${plural(n, 'rating')}` : ''}? This can't be undone.`))) return;
         for (const r of catRatings(d.id)) { await dbDel('ratings', r.id); await dbDel('photos', r.id); forgetPhotoURL(r.id); }
         await dbDel('categories', d.id);
         S.ratings = S.ratings.filter(r => r.categoryId !== d.id);
         S.cats = S.cats.filter(c => c.id !== d.id);
         close();
-        location.hash = '';
-        render();
+        go(null);
         toast('Category deleted');
       };
     },
@@ -644,7 +669,7 @@ function openRatingEditor(cat, existing) {
 
       const del = $('#r-del', wrap);
       if (del) del.onclick = async () => {
-        if (!confirm(`Delete this rating from ${existing.restaurant || 'this place'}?`)) return;
+        if (!(await ask(`Delete this rating from ${existing.restaurant || 'this place'}?`))) return;
         await dbDel('ratings', d.id); await dbDel('photos', d.id); forgetPhotoURL(d.id);
         S.ratings = S.ratings.filter(r => r.id !== d.id);
         close(); render(); toast('Rating deleted');
@@ -719,7 +744,7 @@ async function importBackup(file) {
   let data;
   try { data = JSON.parse(await file.text()); } catch { throw new Error("That file isn't a Tastebook backup"); }
   if (data?.app !== 'tastebook' || !Array.isArray(data.categories) || !Array.isArray(data.ratings)) throw new Error("That file isn't a Tastebook backup");
-  if (!confirm(`Replace everything on this phone with this backup?\n\n${plural(data.categories.length, 'category').replace('categorys', 'categories')} · ${plural(data.ratings.length, 'rating')}`)) return false;
+  if (!(await ask(`Replace everything on this phone with this backup?\n\n${plural(data.categories.length, 'category').replace('categorys', 'categories')} · ${plural(data.ratings.length, 'rating')}`, 'Restore'))) return false;
   for (const s of ['categories', 'ratings', 'photos']) await dbClear(s);
   for (const c of data.categories) await dbPut('categories', c);
   for (const r of data.ratings) await dbPut('ratings', r);
@@ -769,7 +794,7 @@ function openSettings() {
         const f = e.target.files?.[0];
         e.target.value = '';
         if (!f) return;
-        try { if (await importBackup(f)) { close(); location.hash = ''; render(); toast('Backup restored'); } }
+        try { if (await importBackup(f)) { close(); go(null); toast('Backup restored'); } }
         catch (err) { toast(err.message); }
       });
     },
@@ -784,6 +809,15 @@ document.addEventListener('click', e => {
   if (!el) return;
   const { action, id } = el.dataset;
   switch (action) {
+    case 'open-cat': go(id); break;
+    case 'clear-demo':
+      (async () => {
+        for (const st of ['categories', 'ratings', 'photos']) await dbClear(st);
+        try { localStorage.setItem('tb2-demo-cleared', '1'); } catch {}
+        await loadState(); go(null); toast('Samples cleared');
+      })();
+      break;
+    case 'home': go(null); break;
     case 'edit-cat': openCategoryEditor(catById(id)); break;
     case 'new-rating': openRatingEditor(catById(id)); break;
     case 'view-rating': openRatingDetail(id); break;
@@ -795,18 +829,32 @@ document.addEventListener('click', e => {
       break;
   }
 });
-window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); });
+
 
 (async function start() {
+  try { db = await openDB(); } catch (e) { console.warn('Storage unavailable, using memory', e); db = null; }
   try {
-    db = await openDB();
     await loadState();
-    applyTheme(S.profile.theme || localStorage.getItem('tb2-theme') || 'warm-dark');
+    let cleared = false;
+    try { cleared = localStorage.getItem('tb2-demo-cleared') === '1'; } catch {}
+    if (window.TB_DEMO_SEED && !S.cats.length && !cleared) await seedDemo(window.TB_DEMO_SEED);
+    let saved = null;
+    try { saved = localStorage.getItem('tb2-theme'); } catch {}
+    applyTheme(S.profile.theme || saved || 'cinnamon');
+    const m = location.hash.match(/^#c-(.+)$/);
+    if (m && catById(m[1])) S.route = m[1];
     render();
     navigator.storage?.persist?.().catch(() => {});
   } catch (e) {
     console.error(e);
     app.innerHTML = `<p class="empty"><b>Couldn't open your data</b>${esc(e.message)}. If you're in Private Browsing, switch it off and reload.</p>`;
   }
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.TB_DEMO_SEED) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
+
+async function seedDemo(seed) {
+  for (const c of seed.categories) await dbPut('categories', c);
+  for (const r of seed.ratings) await dbPut('ratings', r);
+  if (seed.profile) await dbPut('meta', seed.profile, 'profile');
+  await loadState();
+}
