@@ -1,8 +1,9 @@
 'use strict';
 
 /* =========================================================
-   Tastebook — rate the same food across different places.
-   Everything is stored on the phone in IndexedDB.
+   Yom — rate the same food across every place you try it.
+   Data lives on the phone in IndexedDB (database name kept as
+   'tastebook' so the original version at /original/ shares it).
    ========================================================= */
 
 /* ---------- helpers ---------- */
@@ -12,7 +13,6 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 const fmt = v => (v == null ? '–' : (Math.round(v * 10) / 10).toFixed(1));
 const mean = a => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
-const hue = v => (v == null ? 0 : Math.round(Math.max(0, Math.min(10, v)) * 12)); // 0 red → 120 green
 const todayISO = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
 const niceDate = iso => {
   if (!iso) return '';
@@ -25,21 +25,60 @@ const firstGrapheme = s => {
   if (window.Intl && Intl.Segmenter) { for (const { segment } of new Intl.Segmenter().segment(s)) return segment; }
   return [...s][0];
 };
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
-const ICON = {
-  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
-  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
-  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
-  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
-  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
-  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
-  camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
+const UI = {
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 3v18M3 12h18"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+  star: '<svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>',
 };
 
-const FOOD_EMOJI = ['🍓', '🥤', '🧋', '🍕', '🍔', '🌭', '🍟', '🌮', '🌯', '🥙', '🥪', '🍗', '🍖', '🥓', '🍳', '🥞', '🧇', '🥐', '🥯', '🍞', '🥨', '🧀', '🥗', '🍜', '🍝', '🍲', '🍛', '🍣', '🍱', '🍙', '🥟', '🍤', '🥘', '🍩', '🍪', '🧁', '🍰', '🎂', '🥧', '🍫', '🍬', '🍦', '🍨', '🍧', '☕', '🍵', '🧃', '🍺', '🍷', '🍸', '🍹', '🥛', '🍎', '🍌', '🍉', '🍑', '🥭', '🍍', '🫐', '🥑', '🌶️', '🍿', '🥥', '🍋'];
-const COLORS = ['#FFD3DA', '#FFE0C2', '#FFF0B3', '#D4F0C6', '#C9E8F5', '#DAD3FA', '#F7D0EC', '#E9DCCD'];
-const SUGGESTED = ['Taste', 'Texture', 'Sweetness', 'Price / value', 'Visual appeal', 'Portion size', 'Freshness', 'Temperature', 'Thickness', 'Crust', 'Sauce', 'Service'];
+const TINTS = ['#E9A68C', '#E8C27D', '#A8CBA2', '#9DC4D3', '#B9AEE0', '#E3A7C0', '#D9C3A5', '#EDE6DE', '#D2867F', '#8E9A62', '#9A6478'];
+// earlier colour choices (v1 pastels / grey) map onto the new muted palette
+const OLD_TINTS = { '#FFD3DA': 0, '#FFE0C2': 0, '#FFF0B3': 1, '#D4F0C6': 2, '#C9E8F5': 3, '#DAD3FA': 4, '#F7D0EC': 5, '#E9DCCD': 6,
+  '#F5C6CE': 5, '#F6D9B8': 0, '#F1E6A8': 1, '#C9E6BD': 2, '#BFDDEE': 3, '#D2CAF3': 4, '#EEC6E2': 5 };
+const THEMES = [
+  { id: 'cinnamon', name: 'Warm', sw: ['#FCF3E8', '#CF6A33', '#B9543F', '#E0954E'] },
+  { id: 'warm-dark', name: 'Warm dark', sw: ['#3E2A20', '#E2804A', '#EBB25A', '#E1A2A2'] },
+  { id: 'sorbet', name: 'Sorbet', sw: ['#FFF3E6', '#E2457A', '#F5A623', '#6DBE45'] },
+  { id: 'fresh', name: 'Fresh', sw: ['#FFFFFF', '#2F9967', '#EDAE35', '#E06666'] },
+  { id: 'matcha', name: 'Matcha', sw: ['#324A3B', '#BCDB9C', '#F1CB70', '#F2A9B6'] },
+  { id: 'blueberry', name: 'Blueberry', sw: ['#30346A', '#F592B5', '#F8D37C', '#9FD9A9'] },
+];
+function applyTheme(id) {
+  if (!THEMES.some(t => t.id === id)) id = THEMES[0].id;
+  document.documentElement.dataset.theme = id;
+  try { localStorage.setItem('tb2-theme', id); } catch {}
+  const tc = getComputedStyle(document.documentElement).getPropertyValue('--theme-color').trim();
+  const meta = document.querySelector('meta[name=theme-color]');
+  if (meta && tc) meta.content = tc;
+}
+const SUGGESTED = ['Taste', 'Flavor', 'Texture', 'Sweetness', 'Price / value', 'Visual appeal', 'Portion size', 'Freshness', 'Temperature', 'Thickness', 'Crust', 'Sauce', 'Service'];
 const defaultCounts = name => !/price|value|cost|service/i.test(name);
+
+/* Category icon: v2 uses drawn icons; falls back to the v1 emoji (shown in grey). */
+function iconKey(c) {
+  if (c?.icon && FOOD_ICONS[c.icon]) return c.icon;
+  return EMOJI_TO_ICON[c?.emoji] || null;
+}
+function iconHTML(c) {
+  const k = iconKey(c);
+  if (k) return `<span class="icon"><svg viewBox="0 0 64 64">${FOOD_ICONS[k].svg}</svg></span>`;
+  return `<span class="icon emoji">${esc(c?.emoji || '🍽️')}</span>`;
+}
+// Categories store one of TINTS; each theme supplies its own colour for that slot (--t0 … --t7).
+function tintIndex(c) {
+  if (!c) return 0;
+  const i = TINTS.indexOf(c.color);
+  if (i >= 0) return i;
+  if (c.color in OLD_TINTS) return OLD_TINTS[c.color];
+  return Math.max(0, S.cats.findIndex(x => x.id === c.id)) % TINTS.length;
+}
+const tintOf = c => TINTS[tintIndex(c)];
+const tintStyle = c => `style="--tint:var(--t${tintIndex(c)})"`;
 
 /* ---------- storage (IndexedDB) ---------- */
 let db;
@@ -59,26 +98,33 @@ function openDB() {
 }
 const store = (name, mode = 'readonly') => db.transaction(name, mode).objectStore(name);
 const req = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
-const dbAll = s => req(store(s).getAll());
-const dbGet = (s, k) => req(store(s).get(k));
-const dbPut = (s, v, k) => req(store(s, 'readwrite').put(v, k));
-const dbDel = (s, k) => req(store(s, 'readwrite').delete(k));
-const dbClear = s => req(store(s, 'readwrite').clear());
+// If IndexedDB isn't available (e.g. some private modes), keep data in memory for this visit.
+const MEM = { categories: new Map(), ratings: new Map(), photos: new Map(), meta: new Map() };
+const memKey = (s, v, k) => (k !== undefined ? k : v.id);
+const dbAll = s => (db ? req(store(s).getAll()) : Promise.resolve([...MEM[s].values()]));
+const dbGet = (s, k) => (db ? req(store(s).get(k)) : Promise.resolve(MEM[s].get(k)));
+const dbPut = (s, v, k) => (db ? req(store(s, 'readwrite').put(v, k)) : Promise.resolve(MEM[s].set(memKey(s, v, k), v)));
+const dbDel = (s, k) => (db ? req(store(s, 'readwrite').delete(k)) : Promise.resolve(MEM[s].delete(k)));
+const dbClear = s => (db ? req(store(s, 'readwrite').clear()) : Promise.resolve(MEM[s].clear()));
 
 /* ---------- state ---------- */
-const S = { cats: [], ratings: [], profile: { name: 'My Tastebook' }, photoURLs: new Map(), sort: {} };
+const S = { cats: [], ratings: [], profile: { name: '' }, photoURLs: new Map(), sort: {}, route: null };
 
 async function loadState() {
   S.cats = (await dbAll('categories')).sort((a, b) => a.createdAt - b.createdAt);
   S.ratings = await dbAll('ratings');
-  S.profile = (await dbGet('meta', 'profile')) || { name: 'My Tastebook' };
-  try { S.sort = JSON.parse(localStorage.getItem('tb-sort') || '{}'); } catch { S.sort = {}; }
+  S.profile = (await dbGet('meta', 'profile')) || { name: '' };
+  try { S.sort = JSON.parse(localStorage.getItem('tb2-sort') || '{}'); } catch { S.sort = {}; }
 }
 
 const catById = id => S.cats.find(c => c.id === id);
 const catRatings = id => S.ratings.filter(r => r.categoryId === id);
 const ratingOverall = r => mean(r.scores.filter(s => s.counts).map(s => s.value));
 const catOverall = id => mean(catRatings(id).map(ratingOverall).filter(v => v != null));
+const greetName = () => {
+  const n = (S.profile.name || '').trim();
+  return !n || n === 'My Tastebook' ? 'there' : n.split(/\s+/)[0];
+};
 
 async function photoURL(id) {
   if (S.photoURLs.has(id)) return S.photoURLs.get(id);
@@ -99,7 +145,22 @@ async function hydratePhotos(root) {
   }
 }
 
-/* ---------- little UI bits ---------- */
+/* ---------- UI bits ---------- */
+function ask(message, okLabel = 'Delete') {
+  return new Promise(resolve => {
+    const el = document.createElement('div');
+    el.className = 'ask-wrap';
+    el.innerHTML = `<div class="ask" role="alertdialog" aria-modal="true">
+      <p>${esc(message).replace(/\n/g, '<br>')}</p>
+      <div class="actions"><button class="btn ghost" data-no>Cancel</button><button class="btn" data-yes>${esc(okLabel)}</button></div></div>`;
+    document.body.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('open'));
+    const done = v => { el.remove(); resolve(v); };
+    $('[data-no]', el).onclick = () => done(false);
+    $('[data-yes]', el).onclick = () => done(true);
+    el.addEventListener('click', e => { if (e.target === el) done(false); });
+  });
+}
 let toastTimer;
 function toast(msg) {
   const t = $('#toast');
@@ -108,24 +169,35 @@ function toast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
 }
-const badge = v => `<span class="badge ${v == null ? 'none' : ''}" style="--h:${hue(v)}">${fmt(v)}</span>`;
-function ring(v) {
-  const r = 50, C = 2 * Math.PI * r, p = v == null ? 0 : v / 10;
-  return `<div class="ring-wrap ${v == null ? 'none' : ''}" style="--h:${hue(v)}">
-    <svg class="ring" viewBox="0 0 120 120"><circle class="ring-bg" cx="60" cy="60" r="${r}"/>
-    <circle class="ring-fg" cx="60" cy="60" r="${r}" stroke-dasharray="${(C * p).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 60 60)"/></svg>
-    <div class="ring-label"><strong>${fmt(v)}</strong><span>out of 10</span></div></div>`;
+function stars(v) {
+  const pct = v == null ? 0 : Math.max(0, Math.min(100, v * 10));
+  const row = UI.star.repeat(5);
+  return `<div class="stars" aria-label="${v == null ? 'No ratings yet' : `${fmt(v / 2)} out of 5 stars`}">
+    <div class="row base">${row}</div><div class="fill" style="width:${pct}%"><div class="row">${row}</div></div></div>`;
 }
-const checkbox = (checked, label, attrs = '') =>
-  `<label class="counts"><input type="checkbox" ${checked ? 'checked' : ''} ${attrs}><span class="box">${ICON.check}</span><span>${label}</span></label>`;
+function dots(v) {
+  let h = '';
+  for (let i = 1; i <= 10; i++) {
+    const cls = v == null ? '' : v >= i ? 'on' : v >= i - 0.5 ? 'half' : '';
+    h += `<i class="${cls}"></i>`;
+  }
+  return `<div class="dots" aria-hidden="true">${h}</div>`;
+}
+const checkbox = (checked, attrs = '', label = '') =>
+  `<label class="sq" aria-label="Count toward overall"><input type="checkbox" ${checked ? 'checked' : ''} ${attrs}>${label ? `<span>${label}</span>` : ''}<span class="box"></span></label>`;
 
-function ratingRow(r, showCat) {
-  const c = catById(r.categoryId) || { emoji: '🍽️', name: '' };
-  const bits = [showCat ? c.name : '', r.location, niceDate(r.date)].filter(Boolean).map(esc).join(' · ');
-  return `<button class="row" data-action="view-rating" data-id="${r.id}">
-    <span class="thumb">${r.hasPhoto ? `<img data-photo="${r.id}" alt="">` : esc(c.emoji)}</span>
-    <span class="row-main"><span class="row-title">${esc(r.restaurant || 'Unnamed spot')}</span><span class="row-sub">${bits}</span></span>
-    ${badge(ratingOverall(r))}
+function ratingCard(r, showCat) {
+  const c = catById(r.categoryId);
+  const o = ratingOverall(r);
+  const sub = [showCat ? c?.name : '', r.item, r.location, niceDate(r.date)].filter(Boolean).map(esc).join(' · ');
+  return `<button class="rcard" data-action="view-rating" data-id="${r.id}">
+    ${r.hasPhoto ? `<img class="thumb" data-photo="${r.id}" alt="">` : ''}
+    <div class="rc-main">
+      <div class="rc-title">${esc(r.restaurant || 'Unnamed spot')}</div>
+      <div class="rc-sub">${sub}</div>
+      ${dots(o)}
+    </div>
+    <div class="rc-score ${o == null ? 'none' : ''}">${fmt(o)}</div>
   </button>`;
 }
 
@@ -146,73 +218,78 @@ function byScore(dir) {
    ========================================================= */
 const app = $('#app');
 
+/* Simple router: the open category lives in S.route; the URL hash mirrors it when the browser allows. */
+function go(catId) {
+  S.route = catId || null;
+  try { history.replaceState(null, '', catId ? `#c-${catId}` : location.pathname + location.search); } catch {}
+  render();
+  window.scrollTo(0, 0);
+}
+
 function render() {
-  const m = location.hash.match(/^#\/c\/(.+)$/);
-  if (m) renderCategory(decodeURIComponent(m[1]));
+  if (S.route) renderCategory(S.route);
   else renderHome();
 }
 
 function renderHome() {
   const places = new Set(S.ratings.map(r => (r.restaurant || '').trim().toLowerCase()).filter(Boolean)).size;
   const recent = [...S.ratings].sort(byRecent).slice(0, 5);
-  const name = S.profile.name || 'My Tastebook';
-  const initial = firstGrapheme(name).toUpperCase() || '★';
 
   app.innerHTML = `
-    <header>
-      <div class="profile">
-        <button class="avatar" data-action="settings" aria-label="Profile and settings">${esc(initial)}</button>
-        <div class="who"><p class="eyebrow">Tastebook</p><h1>${esc(name)}</h1></div>
-        <button class="icon-btn" data-action="settings" aria-label="Settings">${ICON.gear}</button>
-      </div>
-      <div class="stats">
-        <div class="stat"><strong>${S.cats.length}</strong><span>Categories</span></div>
-        <div class="stat"><strong>${S.ratings.length}</strong><span>Ratings</span></div>
-        <div class="stat"><strong>${places}</strong><span>Places</span></div>
-      </div>
+    <div class="top-tools"><button class="round-btn" data-action="settings" aria-label="Profile and settings">${UI.gear}</button></div>
+    <header class="greet">
+      <p class="hello">Hello ${esc(greetName())}</p>
+      <p class="sub">Feeling hungry?</p>
     </header>
+    <button class="avatar-big" data-action="settings" aria-label="Your profile">${avatarSVG(S.profile.avatar)}</button>
+    <p class="stat-line">${plural(S.cats.length, 'food')} · ${plural(S.ratings.length, 'rating')} · ${plural(places, 'place')}</p>
 
-    <section>
-      <h2 class="section-title">My foods</h2>
-      ${S.cats.length ? '' : `<div class="empty-card"><strong>Start with something you love</strong>Make a category like “Strawberry smoothie”, pick the qualities you care about, then rate every one you try.</div>`}
-      <div class="grid">
-        ${S.cats.map(c => {
-          const n = catRatings(c.id).length, avg = catOverall(c.id);
-          return `<a class="tile" href="#/c/${encodeURIComponent(c.id)}">
-            <span class="tile-icon" style="--c:${c.color}">${esc(c.emoji)}</span>
-            <span class="tile-name">${esc(c.name)}</span>
-            <span class="tile-meta">${avg != null ? `★ ${fmt(avg)} · ${n}` : 'No ratings yet'}</span>
-          </a>`;
-        }).join('')}
-        <button class="tile add" data-action="new-cat">
-          <span class="tile-icon">${ICON.plus}</span>
-          <span class="tile-name">New category</span>
-        </button>
-      </div>
-    </section>
+    <h2 class="prompt">What would you like to rate today?</h2>
+    ${window.TB_DEMO_SEED && S.ratings.some(r => r.sample) ? `<div class="demo-note"><span>These are sample ratings so you can click around.</span><button data-action="clear-demo">Clear samples</button></div>` : ''}
+    <form class="add-bar" id="add-bar" autocomplete="off">
+      <input id="add-name" type="text" placeholder="Add a new category..." maxlength="40" enterkeyhint="go">
+      <button type="submit" aria-label="Add category">${UI.plus}</button>
+    </form>
 
-    ${recent.length ? `<section><h2 class="section-title">Recently rated</h2><div class="list">${recent.map(r => ratingRow(r, true)).join('')}</div></section>` : ''}
+    <div class="grid2">
+      ${S.cats.map(c => {
+        const avg = catOverall(c.id);
+        return `<button class="tile" data-action="open-cat" data-id="${c.id}" ${tintStyle(c)} aria-label="${esc(c.name)}">
+          ${avg != null ? `<span class="tile-score">${fmt(avg)}</span>` : ''}
+          ${iconHTML(c)}
+          <span class="tile-label">${esc(c.name)}</span>
+        </button>`;
+      }).join('')}
+    </div>
+    ${S.cats.length ? '' : `<p class="empty"><b>Nothing here yet</b>Type a food above — like “Strawberry smoothie” — and tap +.</p>`}
+
+    ${recent.length ? `<p class="section-cap">Recently rated</p><div class="list">${recent.map(r => ratingCard(r, true)).join('')}</div>` : ''}
   `;
+
+  $('#add-bar').addEventListener('submit', e => {
+    e.preventDefault();
+    const v = $('#add-name').value.trim();
+    $('#add-name').blur();
+    openCategoryEditor(null, v);
+  });
   hydratePhotos(app);
 }
 
 function renderCategory(id) {
   const c = catById(id);
-  if (!c) { location.hash = ''; return; }
+  if (!c) { S.route = null; renderHome(); return; }
   const rs = catRatings(id);
   const avg = catOverall(id);
   const sort = S.sort[id] || 'recent';
   const places = new Set(rs.map(r => (r.restaurant || '').trim().toLowerCase()).filter(Boolean)).size;
   const best = [...rs].sort(byScore(1))[0];
+  const qAvgs = c.qualities.map(q => ({
+    q, avg: mean(rs.map(r => r.scores.find(s => s.qid === q.id)).filter(Boolean).map(s => s.value)),
+  }));
 
-  const qAvgs = c.qualities.map(q => {
-    const vals = rs.map(r => r.scores.find(s => s.qid === q.id)).filter(Boolean).map(s => s.value);
-    return { q, avg: mean(vals) };
-  });
-
-  let listHTML = '';
+  let listHTML;
   if (!rs.length) {
-    listHTML = `<div class="empty-card"><strong>No ratings yet</strong>Tap “Add rating” the next time you try one.</div>`;
+    listHTML = `<p class="empty"><b>No ratings yet</b>Tap “New rating” the next time you try one.</p>`;
   } else if (sort === 'location') {
     const groups = new Map();
     for (const r of rs) {
@@ -221,68 +298,67 @@ function renderCategory(id) {
       if (!groups.has(key)) groups.set(key, { label: label || 'No location', items: [] });
       groups.get(key).items.push(r);
     }
-    const ordered = [...groups.entries()].sort(([a], [b]) => (!a) - (!b) || a.localeCompare(b));
-    listHTML = ordered.map(([, g]) => {
+    listHTML = [...groups.entries()].sort(([a], [b]) => (!a) - (!b) || a.localeCompare(b)).map(([, g]) => {
       const gAvg = mean(g.items.map(ratingOverall).filter(v => v != null));
       return `<div class="group-head">${esc(g.label)}<span>${g.items.length} · avg ${fmt(gAvg)}</span></div>
-        <div class="list">${g.items.sort(byScore(1)).map(r => ratingRow(r)).join('')}</div>`;
+        <div class="list">${g.items.sort(byScore(1)).map(r => ratingCard(r)).join('')}</div>`;
     }).join('');
   } else {
     const sorted = [...rs].sort(sort === 'top' ? byScore(1) : sort === 'low' ? byScore(-1) : byRecent);
-    listHTML = `<div class="list">${sorted.map(r => ratingRow(r)).join('')}</div>`;
+    listHTML = `<div class="list">${sorted.map(r => ratingCard(r)).join('')}</div>`;
   }
 
   app.innerHTML = `
     <div class="nav">
-      <a class="icon-btn" href="#" aria-label="Back">${ICON.back}</a>
-      <button class="icon-btn" data-action="edit-cat" data-id="${c.id}" aria-label="Edit category">${ICON.edit}</button>
+      <button class="round-btn" data-action="home" aria-label="Back">${UI.back}</button>
+      <button class="round-btn" data-action="edit-cat" data-id="${c.id}" aria-label="Edit category">${UI.edit}</button>
     </div>
-    <div class="hero">
-      <span class="tile-icon xl" style="--c:${c.color}">${esc(c.emoji)}</span>
-      <h1>${esc(c.name)}</h1>
-      <div class="hero-score">
-        ${ring(avg)}
-        <div class="hero-facts">
-          <div><b>${rs.length}</b>${rs.length === 1 ? 'rating' : 'ratings'}</div>
-          <div><b>${places}</b>${places === 1 ? 'place' : 'places'}</div>
-        </div>
-      </div>
-      ${best && ratingOverall(best) != null ? `<p class="eyebrow">Best so far: ${esc(best.restaurant)} · ${fmt(ratingOverall(best))}</p>` : ''}
-    </div>
+    <div class="big-circle" ${tintStyle(c)}>${iconHTML(c)}</div>
+    <h1 class="cat-title">${esc(c.name)}</h1>
+    <p class="avg-line">Average rating: <b>${fmt(avg)}</b>${avg != null ? ' / 10' : ''}</p>
+    ${stars(avg)}
+    <p class="meta-line">${plural(rs.length, 'rating')} · ${plural(places, 'place')}${best && ratingOverall(best) != null ? ` · Best: ${esc(best.restaurant)}` : ''}</p>
 
-    ${rs.length ? `<div class="breakdown">${qAvgs.map(({ q, avg }) => `
-      <div class="bar-row ${q.counts === false ? 'off' : ''}" style="--h:${hue(avg)}">
-        <span class="label">${esc(q.name)}${q.counts === false ? '<small>not in score</small>' : ''}</span>
-        <span class="bar"><i style="width:${avg == null ? 0 : avg * 10}%"></i></span>
-        <span class="num">${fmt(avg)}</span>
-      </div>`).join('')}</div>` : '<div style="height:18px"></div>'}
+    <button class="new-card" data-action="new-rating" data-id="${c.id}">
+      <span class="caps">New rating</span>
+      <span class="plus-circle">${UI.plus}</span>
+    </button>
 
-    ${rs.length > 1 ? `<div class="seg" role="tablist">
-      ${[['recent', 'Recent'], ['top', 'Highest'], ['low', 'Lowest'], ['location', 'Location']].map(([k, l]) =>
-        `<button role="tab" class="${sort === k ? 'on' : ''}" data-action="sort" data-sort="${k}" data-id="${c.id}">${l}</button>`).join('')}
+    ${rs.length ? `<div class="panel" style="margin-top:14px">
+      <p class="panel-cap">Average by quality</p>
+      ${qAvgs.map(({ q, avg }) => `
+        <div class="bar-row ${q.counts === false ? 'off' : ''}">
+          <span class="label">${esc(q.name)}${q.counts === false ? '<small>not in score</small>' : ''}</span>
+          <span class="bar"><i style="width:${avg == null ? 0 : avg * 10}%"></i></span>
+          <span class="num">${fmt(avg)}</span>
+        </div>`).join('')}
     </div>` : ''}
 
-    ${listHTML}
+    ${rs.length > 1 ? `<div class="sort" role="tablist">
+      <span class="pill label">Sort by</span>
+      ${[['recent', 'Recent'], ['top', 'Favorites'], ['low', 'Lowest'], ['location', 'Location']].map(([k, l]) =>
+        `<button role="tab" class="pill ${sort === k ? 'on' : ''}" data-action="sort" data-sort="${k}" data-id="${c.id}">${l}</button>`).join('')}
+    </div>` : '<div style="height:16px"></div>'}
 
-    <button class="fab" data-action="new-rating" data-id="${c.id}">${ICON.plus}Add rating</button>
+    ${listHTML}
   `;
   hydratePhotos(app);
 }
 
 /* =========================================================
-   Sheets (full-screen pop-ups)
+   Sheets
    ========================================================= */
-function openSheet({ title, body, saveLabel, onSave, cancelLabel = 'Cancel', mount }) {
+function openSheet({ title, mid, body, saveLabel, onSave, cancelLabel = 'Cancel', mount }) {
   const wrap = document.createElement('div');
   wrap.className = 'sheet-wrap';
   wrap.innerHTML = `<div class="backdrop"></div>
     <section class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}">
       <header class="sheet-head">
         <button class="link" data-close>${esc(cancelLabel)}</button>
-        <h3>${esc(title)}</h3>
+        <div class="mid">${mid || ''}</div>
         ${onSave ? `<button class="link strong" data-save>${esc(saveLabel || 'Save')}</button>` : '<span></span>'}
       </header>
-      <div class="sheet-body">${body}</div>
+      <div class="sheet-body"><div class="sheet-panel"><p class="sheet-title">${esc(title)}</p>${body}</div></div>
     </section>`;
   document.body.appendChild(wrap);
   document.body.classList.add('locked');
@@ -293,10 +369,9 @@ function openSheet({ title, body, saveLabel, onSave, cancelLabel = 'Cancel', mou
     setTimeout(() => {
       wrap.remove();
       if (!$('.sheet-wrap')) document.body.classList.remove('locked');
-    }, 300);
+    }, 320);
   };
   $('[data-close]', wrap).onclick = close;
-  if (!onSave) $('.backdrop', wrap).onclick = close;
   if (onSave) {
     const btn = $('[data-save]', wrap);
     btn.onclick = async () => {
@@ -311,29 +386,51 @@ function openSheet({ title, body, saveLabel, onSave, cancelLabel = 'Cancel', mou
 }
 
 /* ---------- category editor ---------- */
-function openCategoryEditor(existing) {
+function openCategoryEditor(existing, prefillName = '') {
   const d = existing ? structuredClone(existing) : {
-    id: uid(), name: '', emoji: '🍓', color: COLORS[0], qualities: [], createdAt: Date.now(),
+    id: uid(), name: prefillName, emoji: '🍽️', icon: 'plate', color: TINTS[S.cats.length % 8], qualities: [], createdAt: Date.now(),
   };
+  if (existing && !d.icon) d.icon = iconKey(d) || '';
+  if (existing) d.color = tintOf(existing);
+  if (!existing && prefillName) {
+    // guess an icon from the name
+    const n = prefillName.toLowerCase();
+    const guess = [['smoothie', 'smoothie'], ['juice', 'smoothie'], ['shake', 'smoothie'], ['bubble', 'bubbletea'], ['boba', 'bubbletea'],
+      ['coffee', 'coffee'], ['latte', 'coffee'], ['cinnamon', 'roll'], ['scroll', 'roll'], ['donut', 'donut'], ['doughnut', 'donut'],
+      ['cookie', 'cookie'], ['cake', 'cake'], ['cupcake', 'cupcake'], ['ice cream', 'icecream'], ['gelato', 'icecream'], ['pie', 'pie'],
+      ['tart', 'pie'], ['taco', 'taco'], ['burrito', 'taco'], ['fries', 'fries'], ['chips', 'fries'], ['hot dog', 'hotdog'],
+      ['sandwich', 'sandwich'], ['toastie', 'sandwich'], ['ramen', 'noodles'], ['noodle', 'noodles'], ['pho', 'noodles'], ['pasta', 'noodles'],
+      ['sushi', 'sushi'], ['chicken', 'chicken'], ['wing', 'chicken'], ['egg', 'egg'], ['breakfast', 'egg'], ['croissant', 'bread'],
+      ['bread', 'bread'], ['bagel', 'bread'], ['cheese', 'cheese'], ['strawberr', 'strawberry'], ['cocktail', 'cocktail'], ['margarita', 'cocktail'],
+      ['salad', 'bowl'], ['bowl', 'bowl'], ['burger', 'burger'], ['pizza', 'pizza']];
+    const hit = guess.find(([w]) => n.includes(w));
+    if (hit) { d.icon = hit[1]; d.emoji = FOOD_ICONS[hit[1]].emoji; }
+    const tintGuess = [[/strawberr|raspberr|pink|rose|cherry|watermelon|guava|dragon/, 8],
+      [/green|matcha|mint|avocado|kale|spinach|kiwi|pistachio|pesto|herb|salad|lime/, 9],
+      [/blueberr|acai|açaí|ube|taro|grape|plum|blackberr|purple/, 10],
+      [/choc|cocoa|mocha|brownie|coffee|espresso|latte/, 7], [/caramel|honey|banana|mango|peach|lemon|custard|cheese/, 6]];
+    const tg = tintGuess.find(([re]) => re.test(n));
+    if (tg) d.color = TINTS[tg[1]];
+  }
 
   const body = `
-    <div class="cat-preview"><span class="tile-icon xl" id="pv" style="--c:${d.color}">${esc(d.emoji)}</span></div>
-    <label class="field"><span>Food type</span>
-      <input id="f-name" type="text" placeholder="e.g. Strawberry smoothie" value="${esc(d.name)}" maxlength="40" autocomplete="off"></label>
-    <div class="field"><span>Icon</span>
-      <div class="emoji-grid" id="emoji-grid">${FOOD_EMOJI.map(e => `<button type="button" class="emoji ${e === d.emoji ? 'on' : ''}" data-emoji="${e}">${e}</button>`).join('')}</div>
-      <label class="mini-field">Or type any emoji <input id="f-emoji" type="text" maxlength="12" placeholder="🙂" autocomplete="off"></label>
-    </div>
-    <div class="field"><span>Colour</span>
-      <div class="swatches">${COLORS.map(col => `<button type="button" class="swatch ${col === d.color ? 'on' : ''}" style="--c:${col}" data-color="${col}" aria-label="Colour ${col}"></button>`).join('')}</div>
-    </div>
-    <div class="field"><span>What you'll rate it on</span>
-      <p class="hint">Tick “Counts” for qualities that make up the overall score. Untick ones you just want to remember (like price).</p>
-      <ul class="q-list" id="q-list"></ul>
-      <div class="q-add"><input id="q-new" class="input" type="text" placeholder="Add a quality…" maxlength="30" autocomplete="off" enterkeyhint="done"><button type="button" class="btn small" id="q-add">Add</button></div>
-      <div class="chips" id="q-chips"></div>
-    </div>
-    ${existing ? `<button type="button" class="btn danger block" id="cat-del">Delete this category</button>` : ''}
+    <div class="preview" id="pv" ${tintStyle(d)}>${iconHTML(d)}</div>
+    <input id="f-name" type="text" placeholder="Name of food, e.g. Hamburgers..." value="${esc(d.name)}" maxlength="40" autocomplete="off">
+
+    <p class="field-cap">Icon</p>
+    <div class="icon-grid" id="icon-grid" ${tintStyle(d)}>${Object.entries(FOOD_ICONS).map(([k, v]) =>
+      `<button type="button" class="icon-opt ${k === d.icon ? 'on' : ''}" data-icon="${k}" aria-label="${esc(v.label)}"><svg class="icon" viewBox="0 0 64 64">${v.svg}</svg></button>`).join('')}</div>
+    <div class="emoji-row">Or use any emoji instead <input id="f-emoji" type="text" maxlength="12" placeholder="🙂" autocomplete="off"></div>
+
+    <p class="field-cap">Icon colour</p>
+    <div class="swatches">${TINTS.map((col, i) => `<button type="button" class="swatch ${col === d.color ? 'on' : ''}" style="--c:var(--t${i})" data-color="${col}" aria-label="Colour"></button>`).join('')}</div>
+
+    <p class="field-cap">Qualities you'll rate <small>■ = counts in score</small></p>
+    <p class="hint">Untick the box for things you just want to remember, like price.</p>
+    <ul class="q-list" id="q-list"></ul>
+    <div class="q-add"><input id="q-new" class="inp" type="text" placeholder="Add a quality..." maxlength="30" autocomplete="off" enterkeyhint="done"><button type="button" class="btn" id="q-add">Add</button></div>
+    <div class="chips" id="q-chips"></div>
+    ${existing ? `<button type="button" class="btn danger" id="cat-del">Delete this category</button>` : ''}
   `;
 
   openSheet({
@@ -345,28 +442,28 @@ function openCategoryEditor(existing) {
       d.qualities = d.qualities.map(q => ({ ...q, name: q.name.trim() })).filter(q => q.name);
       if (!d.name) { toast('Give it a name first'); $('#f-name').focus(); return false; }
       if (!d.qualities.length) { toast('Add at least one quality to rate'); return false; }
+      if (d.icon && FOOD_ICONS[d.icon]) d.emoji = FOOD_ICONS[d.icon].emoji; // keeps v1 showing a sensible icon
       await dbPut('categories', d);
       const i = S.cats.findIndex(c => c.id === d.id);
       if (i >= 0) S.cats[i] = d; else S.cats.push(d);
       if (existing) render();
-      else location.hash = `#/c/${encodeURIComponent(d.id)}`;
+      else go(d.id);
       toast(existing ? 'Saved' : `${d.name} added`);
     },
     mount: (wrap, close) => {
-      const pv = $('#pv', wrap);
-      const qList = $('#q-list', wrap);
-      const chips = $('#q-chips', wrap);
+      const pv = $('#pv', wrap), qList = $('#q-list', wrap), chips = $('#q-chips', wrap);
+      const drawPreview = () => { const t = `var(--t${tintIndex(d)})`; pv.innerHTML = iconHTML(d); pv.style.setProperty('--tint', t); $('#icon-grid', wrap).style.setProperty('--tint', t); };
 
       const drawQualities = () => {
         qList.innerHTML = d.qualities.map(q => `
           <li class="q-row" data-qid="${q.id}">
             <input type="text" value="${esc(q.name)}" maxlength="30" data-qname aria-label="Quality name">
-            ${checkbox(q.counts !== false, 'Counts', 'data-qcount')}
-            <button type="button" class="q-del" data-qdel aria-label="Remove">${ICON.x}</button>
+            ${checkbox(q.counts !== false, 'data-qcount', 'Counts')}
+            <button type="button" class="q-del" data-qdel aria-label="Remove">${UI.x}</button>
           </li>`).join('');
         const have = new Set(d.qualities.map(q => q.name.trim().toLowerCase()));
         chips.innerHTML = SUGGESTED.filter(s => !have.has(s.toLowerCase()))
-          .map(s => `<button type="button" class="chip" data-chip="${esc(s)}">${esc(s)}</button>`).join('');
+          .map(s => `<button type="button" class="pill" data-chip="${esc(s)}">+ ${esc(s)}</button>`).join('');
       };
       const addQuality = name => {
         name = name.trim();
@@ -376,41 +473,36 @@ function openCategoryEditor(existing) {
         drawQualities();
       };
       drawQualities();
+      if (!existing) ['Flavor', 'Texture', 'Value (price)', 'Visual appeal'].forEach(addQuality);
 
-      // Starter qualities for a brand-new category so it's quick to set up
-      if (!existing) {
-        ['Taste', 'Texture', 'Price / value', 'Visual appeal'].forEach(addQuality);
-      }
-
-      $('#emoji-grid', wrap).addEventListener('click', e => {
-        const b = e.target.closest('[data-emoji]');
+      $('#icon-grid', wrap).addEventListener('click', e => {
+        const b = e.target.closest('[data-icon]');
         if (!b) return;
-        d.emoji = b.dataset.emoji;
-        pv.textContent = d.emoji;
-        $$('.emoji', wrap).forEach(x => x.classList.toggle('on', x === b));
+        d.icon = b.dataset.icon;
+        d.emoji = FOOD_ICONS[d.icon].emoji;
+        $$('.icon-opt', wrap).forEach(x => x.classList.toggle('on', x === b));
+        drawPreview();
       });
       $('#f-emoji', wrap).addEventListener('input', e => {
         const g = firstGrapheme(e.target.value);
         if (!g) return;
         d.emoji = g;
-        pv.textContent = g;
-        $$('.emoji', wrap).forEach(x => x.classList.toggle('on', x.dataset.emoji === g));
+        d.icon = EMOJI_TO_ICON[g] || '';
+        $$('.icon-opt', wrap).forEach(x => x.classList.toggle('on', x.dataset.icon === d.icon));
+        drawPreview();
       });
       $$('.swatch', wrap).forEach(s => s.addEventListener('click', () => {
         d.color = s.dataset.color;
-        pv.style.setProperty('--c', d.color);
         $$('.swatch', wrap).forEach(x => x.classList.toggle('on', x === s));
+        drawPreview();
       }));
 
       qList.addEventListener('input', e => {
-        const row = e.target.closest('[data-qid]');
-        const q = d.qualities.find(x => x.id === row?.dataset.qid);
-        if (!q) return;
-        if (e.target.matches('[data-qname]')) q.name = e.target.value;
+        const q = d.qualities.find(x => x.id === e.target.closest('[data-qid]')?.dataset.qid);
+        if (q && e.target.matches('[data-qname]')) q.name = e.target.value;
       });
       qList.addEventListener('change', e => {
-        const row = e.target.closest('[data-qid]');
-        const q = d.qualities.find(x => x.id === row?.dataset.qid);
+        const q = d.qualities.find(x => x.id === e.target.closest('[data-qid]')?.dataset.qid);
         if (q && e.target.matches('[data-qcount]')) q.counts = e.target.checked;
       });
       qList.addEventListener('click', e => {
@@ -420,38 +512,28 @@ function openCategoryEditor(existing) {
         d.qualities = d.qualities.filter(q => q.id !== id);
         drawQualities();
       });
-      chips.addEventListener('click', e => {
-        const c = e.target.closest('[data-chip]');
-        if (c) addQuality(c.dataset.chip);
-      });
+      chips.addEventListener('click', e => { const c = e.target.closest('[data-chip]'); if (c) addQuality(c.dataset.chip); });
       const qNew = $('#q-new', wrap);
       $('#q-add', wrap).onclick = () => { addQuality(qNew.value); qNew.value = ''; qNew.focus(); };
-      qNew.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { e.preventDefault(); addQuality(qNew.value); qNew.value = ''; }
-      });
+      qNew.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addQuality(qNew.value); qNew.value = ''; } });
 
       const del = $('#cat-del', wrap);
       if (del) del.onclick = async () => {
         const n = catRatings(d.id).length;
-        if (!confirm(`Delete “${existing.name}”${n ? ` and its ${n} rating${n === 1 ? '' : 's'}` : ''}? This can't be undone.`)) return;
-        for (const r of catRatings(d.id)) {
-          await dbDel('ratings', r.id);
-          await dbDel('photos', r.id);
-          forgetPhotoURL(r.id);
-        }
+        if (!(await ask(`Delete “${existing.name}”${n ? ` and its ${plural(n, 'rating')}` : ''}? This can't be undone.`))) return;
+        for (const r of catRatings(d.id)) { await dbDel('ratings', r.id); await dbDel('photos', r.id); forgetPhotoURL(r.id); }
         await dbDel('categories', d.id);
         S.ratings = S.ratings.filter(r => r.categoryId !== d.id);
         S.cats = S.cats.filter(c => c.id !== d.id);
         close();
-        location.hash = '';
-        render();
+        go(null);
         toast('Category deleted');
       };
     },
   });
 }
 
-/* ---------- photo handling ---------- */
+/* ---------- photos ---------- */
 function compressImage(file, max = 1400, quality = 0.8) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -473,10 +555,9 @@ function compressImage(file, max = 1400, quality = 0.8) {
 /* ---------- rating editor ---------- */
 function openRatingEditor(cat, existing) {
   const d = existing ? structuredClone(existing) : {
-    id: uid(), categoryId: cat.id, restaurant: '', location: '', date: todayISO(),
+    id: uid(), categoryId: cat.id, restaurant: '', location: '', item: '', date: todayISO(),
     scores: [], notes: '', hasPhoto: false, createdAt: Date.now(),
   };
-  // Line the scores up with the category's current qualities; keep any old ones so nothing is lost.
   const scores = cat.qualities.map(q => {
     const s = d.scores.find(x => x.qid === q.id);
     return s ? { ...s, name: q.name } : { qid: q.id, name: q.name, value: 5, counts: q.counts !== false };
@@ -484,54 +565,55 @@ function openRatingEditor(cat, existing) {
   for (const s of d.scores) if (!cat.qualities.some(q => q.id === s.qid)) scores.push(s);
   d.scores = scores;
 
-  let newPhoto = null;
-  let removePhoto = false;
+  let newPhoto = null, removePhoto = false;
   const uniq = key => [...new Set(S.ratings.map(r => (r[key] || '').trim()).filter(Boolean))].sort();
 
   const body = `
-    <div class="live"><span>Overall<small id="live-note"></small></span><span id="live-badge"></span></div>
+    <div class="stack">
+      <input id="r-name" type="text" list="dl-rest" placeholder="Restaurant Name..." value="${esc(d.restaurant)}" autocomplete="off" maxlength="60">
+      <input id="r-loc" type="text" list="dl-loc" placeholder="Location..." value="${esc(d.location)}" autocomplete="off" maxlength="60">
+      <input id="r-item" type="text" placeholder="Menu item name..." value="${esc(d.item || '')}" autocomplete="off" maxlength="60">
+      <label class="date-row">Date<input id="r-date" type="date" value="${esc(d.date)}"></label>
+    </div>
+    <datalist id="dl-rest">${uniq('restaurant').map(v => `<option value="${esc(v)}">`).join('')}</datalist>
+    <datalist id="dl-loc">${uniq('location').map(v => `<option value="${esc(v)}">`).join('')}</datalist>
 
     <label class="photo-pick ${d.hasPhoto ? 'has' : ''}" id="photo-pick">
       <img id="photo-img" alt="">
-      <span class="photo-empty">${ICON.camera}Add a photo</span>
+      <span class="photo-empty"><span class="caps">Add photo</span><span class="plus-circle">${UI.plus}</span></span>
       <button type="button" class="photo-remove" id="photo-remove">Remove</button>
       <input type="file" accept="image/*" id="photo-input" class="visually-hidden">
     </label>
 
-    <label class="field"><span>Restaurant / shop</span>
-      <input id="r-name" type="text" list="dl-rest" placeholder="Where was it from?" value="${esc(d.restaurant)}" autocomplete="off" maxlength="60"></label>
-    <label class="field"><span>Location</span>
-      <input id="r-loc" type="text" list="dl-loc" placeholder="Suburb, street or city" value="${esc(d.location)}" autocomplete="off" maxlength="60"></label>
-    <datalist id="dl-rest">${uniq('restaurant').map(v => `<option value="${esc(v)}">`).join('')}</datalist>
-    <datalist id="dl-loc">${uniq('location').map(v => `<option value="${esc(v)}">`).join('')}</datalist>
-    <label class="field"><span>Date</span><input id="r-date" type="date" value="${esc(d.date)}"></label>
+    <p class="how">How was it?</p>
+    <p class="hint">Ticked boxes count toward the overall score.</p>
+    ${d.scores.map((s, i) => `
+      <div class="rate ${s.counts ? '' : 'off'}" data-i="${i}">
+        <div class="rate-top">
+          <span class="rate-name">${esc(s.name)}<span class="val"><span data-val>${fmt(s.value)}</span>/10</span></span>
+          ${checkbox(s.counts, 'data-count')}
+        </div>
+        <div class="rate-box"><input type="range" class="slider" min="0" max="10" step="0.5" value="${s.value}" style="--p:${s.value * 10}%" aria-label="${esc(s.name)} score"></div>
+      </div>`).join('')}
 
-    <div class="field"><span>Your scores</span>
-      ${d.scores.map((s, i) => `
-        <div class="rate ${s.counts ? '' : 'off'}" data-i="${i}" style="--h:${hue(s.value)}">
-          <div class="rate-top"><span class="rate-name">${esc(s.name)}</span><span class="rate-val"><span data-val>${fmt(s.value)}</span> <small>/ 10</small></span></div>
-          <input type="range" class="slider" min="0" max="10" step="0.5" value="${s.value}" style="--p:${s.value * 10}%" aria-label="${esc(s.name)} score">
-          <div class="rate-foot">${checkbox(s.counts, 'Count toward overall', 'data-count')}<span class="scale">0 · · · 10</span></div>
-        </div>`).join('')}
-    </div>
-
-    <label class="field"><span>Notes</span><textarea id="r-notes" rows="3" placeholder="Anything to remember? e.g. ask for less ice">${esc(d.notes)}</textarea></label>
-    ${existing ? `<button type="button" class="btn danger block" id="r-del">Delete this rating</button>` : ''}
+    <p class="field-cap">Notes</p>
+    <textarea id="r-notes" rows="3" placeholder="Anything to remember?">${esc(d.notes)}</textarea>
+    ${existing ? `<button type="button" class="btn danger" id="r-del">Delete this rating</button>` : ''}
   `;
 
   openSheet({
-    title: existing ? 'Edit rating' : `New ${cat.name}`,
+    title: existing ? `Edit ${cat.name} rating` : `New ${cat.name} rating`,
+    mid: `<div class="live"><strong id="live-val">–</strong><span id="live-note">overall</span></div>`,
     body,
     onSave: async () => {
       d.restaurant = $('#r-name').value.trim();
       d.location = $('#r-loc').value.trim();
+      d.item = $('#r-item').value.trim();
       d.date = $('#r-date').value || todayISO();
       d.notes = $('#r-notes').value.trim();
       if (!d.restaurant) { toast('Add the restaurant name'); $('#r-name').focus(); return false; }
-
       if (newPhoto) { await dbPut('photos', newPhoto, d.id); d.hasPhoto = true; forgetPhotoURL(d.id); }
       else if (removePhoto) { await dbDel('photos', d.id); d.hasPhoto = false; forgetPhotoURL(d.id); }
-
       await dbPut('ratings', d);
       const i = S.ratings.findIndex(r => r.id === d.id);
       if (i >= 0) S.ratings[i] = d; else S.ratings.push(d);
@@ -540,11 +622,11 @@ function openRatingEditor(cat, existing) {
       toast(o != null ? `Saved · ${fmt(o)}/10` : 'Saved');
     },
     mount: (wrap, close) => {
-      const liveBadge = $('#live-badge', wrap), liveNote = $('#live-note', wrap);
+      const liveVal = $('#live-val', wrap), liveNote = $('#live-note', wrap);
       const updateLive = () => {
         const counted = d.scores.filter(s => s.counts).length;
-        liveBadge.innerHTML = badge(ratingOverall(d));
-        liveNote.textContent = counted === d.scores.length ? `from all ${counted} qualities` : `from ${counted} of ${d.scores.length} qualities`;
+        liveVal.textContent = fmt(ratingOverall(d));
+        liveNote.textContent = counted === d.scores.length ? 'overall' : `overall · ${counted} of ${d.scores.length}`;
       };
       updateLive();
 
@@ -554,7 +636,6 @@ function openRatingEditor(cat, existing) {
         slider.addEventListener('input', () => {
           s.value = +slider.value;
           slider.style.setProperty('--p', `${s.value * 10}%`);
-          el.style.setProperty('--h', hue(s.value));
           $('[data-val]', el).textContent = fmt(s.value);
           updateLive();
         });
@@ -565,7 +646,6 @@ function openRatingEditor(cat, existing) {
         });
       });
 
-      // photo
       const pick = $('#photo-pick', wrap), img = $('#photo-img', wrap), input = $('#photo-input', wrap);
       if (d.hasPhoto) photoURL(d.id).then(u => { if (u) img.src = u; });
       input.addEventListener('change', async () => {
@@ -574,7 +654,6 @@ function openRatingEditor(cat, existing) {
         try {
           newPhoto = await compressImage(f);
           removePhoto = false;
-          if (img.src.startsWith('blob:') && !S.photoURLs.has(d.id)) URL.revokeObjectURL(img.src);
           img.src = URL.createObjectURL(newPhoto);
           pick.classList.add('has');
         } catch (e) { toast(e.message); }
@@ -589,14 +668,10 @@ function openRatingEditor(cat, existing) {
 
       const del = $('#r-del', wrap);
       if (del) del.onclick = async () => {
-        if (!confirm(`Delete this rating from ${existing.restaurant || 'this place'}?`)) return;
-        await dbDel('ratings', d.id);
-        await dbDel('photos', d.id);
-        forgetPhotoURL(d.id);
+        if (!(await ask(`Delete this rating from ${existing.restaurant || 'this place'}?`))) return;
+        await dbDel('ratings', d.id); await dbDel('photos', d.id); forgetPhotoURL(d.id);
         S.ratings = S.ratings.filter(r => r.id !== d.id);
-        close();
-        render();
-        toast('Rating deleted');
+        close(); render(); toast('Rating deleted');
       };
     },
   });
@@ -610,28 +685,27 @@ function openRatingDetail(id) {
   const o = ratingOverall(r);
   const meta = [r.location, niceDate(r.date)].filter(Boolean).map(esc).join(' · ');
 
-  const body = `
-    ${r.hasPhoto ? `<img class="detail-photo" data-photo="${r.id}" alt="Photo of the ${esc(c?.name || 'food')}">` : ''}
-    <div class="detail-head">
-      ${ring(o)}
-      <div class="grow"><h2>${esc(r.restaurant)}</h2><p>${meta}</p><p>${esc(c?.emoji || '')} ${esc(c?.name || '')}</p></div>
+  const body = `<div class="detail-panel">
+    ${r.hasPhoto ? `<img class="detail-photo" data-photo="${r.id}" alt="Photo">` : ''}
+    <div class="detail-top">
+      <div><h2>${esc(r.restaurant)}</h2>${r.item ? `<p>${esc(r.item)}</p>` : ''}<p>${meta}</p></div>
+      <div class="rc-score ${o == null ? 'none' : ''}">${fmt(o)}</div>
     </div>
-    <div class="breakdown" style="margin:0">
-      ${r.scores.map(s => `
-        <div class="bar-row ${s.counts ? '' : 'off'}" style="--h:${hue(s.value)}">
-          <span class="label">${esc(s.name)}${s.counts ? '' : '<small>not in score</small>'}</span>
-          <span class="bar"><i style="width:${s.value * 10}%"></i></span>
-          <span class="num">${fmt(s.value)}</span>
-        </div>`).join('')}
-    </div>
+    ${dots(o)}
+    ${r.scores.map(s => `
+      <div class="bar-row ${s.counts ? '' : 'off'}">
+        <span class="label">${esc(s.name)}${s.counts ? '' : '<small>not in score</small>'}</span>
+        <span class="bar"><i style="width:${s.value * 10}%"></i></span>
+        <span class="num">${fmt(s.value)}</span>
+      </div>`).join('')}
     ${r.notes ? `<div class="notes">${esc(r.notes)}</div>` : ''}
     <div class="actions">
-      <button class="btn ghost" id="d-edit">${ICON.edit}Edit</button>
-      <button class="btn ghost" id="d-close">Done</button>
-    </div>`;
+      <button class="btn ghost" id="d-edit">${UI.edit}Edit</button>
+      <button class="btn" id="d-close">Done</button>
+    </div></div>`;
 
   openSheet({
-    title: c?.name || 'Rating',
+    title: c ? `${c.name} rating` : 'Rating',
     body,
     cancelLabel: 'Close',
     mount: (wrap, close) => {
@@ -646,7 +720,6 @@ function openRatingDetail(id) {
 function blobToDataURL(blob) {
   return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); });
 }
-
 async function exportBackup() {
   const photos = {};
   for (const r of S.ratings) {
@@ -654,10 +727,10 @@ async function exportBackup() {
     const b = await dbGet('photos', r.id);
     if (b) photos[r.id] = await blobToDataURL(b);
   }
-  const data = { app: 'tastebook', version: 1, exportedAt: new Date().toISOString(), profile: S.profile, categories: S.cats, ratings: S.ratings, photos };
-  const file = new File([JSON.stringify(data)], `tastebook-backup-${todayISO()}.json`, { type: 'application/json' });
+  const data = { app: 'yom', version: 1, exportedAt: new Date().toISOString(), profile: S.profile, categories: S.cats, ratings: S.ratings, photos };
+  const file = new File([JSON.stringify(data)], `yom-backup-${todayISO()}.json`, { type: 'application/json' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: 'Tastebook backup' }); return; }
+    try { await navigator.share({ files: [file], title: 'Yom backup' }); return; }
     catch (e) { if (e.name === 'AbortError') return; }
   }
   const a = document.createElement('a');
@@ -666,19 +739,15 @@ async function exportBackup() {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
 }
-
 async function importBackup(file) {
   let data;
-  try { data = JSON.parse(await file.text()); } catch { throw new Error("That file isn't a Tastebook backup"); }
-  if (data?.app !== 'tastebook' || !Array.isArray(data.categories) || !Array.isArray(data.ratings)) throw new Error("That file isn't a Tastebook backup");
-  if (!confirm(`Replace everything on this phone with this backup?\n\n${data.categories.length} categories · ${data.ratings.length} ratings`)) return false;
+  try { data = JSON.parse(await file.text()); } catch { throw new Error("That file isn't a Yom backup"); }
+  if (!['yom', 'tastebook'].includes(data?.app) || !Array.isArray(data.categories) || !Array.isArray(data.ratings)) throw new Error("That file isn't a Yom backup");
+  if (!(await ask(`Replace everything on this phone with this backup?\n\n${plural(data.categories.length, 'category').replace('categorys', 'categories')} · ${plural(data.ratings.length, 'rating')}`, 'Restore'))) return false;
   for (const s of ['categories', 'ratings', 'photos']) await dbClear(s);
   for (const c of data.categories) await dbPut('categories', c);
   for (const r of data.ratings) await dbPut('ratings', r);
-  for (const [id, url] of Object.entries(data.photos || {})) {
-    const blob = await (await fetch(url)).blob();
-    await dbPut('photos', blob, id);
-  }
+  for (const [id, url] of Object.entries(data.photos || {})) await dbPut('photos', await (await fetch(url)).blob(), id);
   if (data.profile) await dbPut('meta', data.profile, 'profile');
   S.photoURLs.forEach(u => URL.revokeObjectURL(u));
   S.photoURLs.clear();
@@ -687,38 +756,79 @@ async function importBackup(file) {
 }
 
 function openSettings() {
-  const body = `
-    <label class="field"><span>Your name</span><input id="s-name" type="text" value="${esc(S.profile.name)}" maxlength="40" autocomplete="off"></label>
-    <div class="settings-group">
-      <h4>Back up your ratings</h4>
-      <p>Everything is saved on this phone only. Save a backup file now and then (to Files or iCloud Drive) so you never lose your ratings — it includes your photos.</p>
-      <div class="row-btns">
-        <button class="btn" id="s-export">Save backup</button>
-        <label class="btn ghost">Restore<input type="file" accept="application/json,.json" id="s-import" class="visually-hidden"></label>
-      </div>
+  const av = { ...DEFAULT_AVATAR, ...(S.profile.avatar || {}) };
+  const FACE = '52 62 96 76';
+  const body = `<div class="settings">
+    <div class="av-preview" id="av-preview">${avatarSVG(av)}</div>
+    <div class="av-tools"><button type="button" class="pill" id="av-random">Shuffle</button></div>
+    <input id="s-name" type="text" placeholder="Your name..." value="${esc(S.profile.name === 'My Tastebook' ? '' : S.profile.name)}" maxlength="40" autocomplete="off">
+    <div id="av-editor"></div>
+    <p class="field-cap">Colour theme</p>
+    <div class="theme-grid" id="theme-grid">${THEMES.map(t => `<button type="button" class="theme-opt ${document.documentElement.dataset.theme === t.id ? 'on' : ''}" data-theme-id="${t.id}">
+      <span class="sw">${t.sw.map(c => `<i style="background:${c}"></i>`).join('')}</span><span>${t.name}</span></button>`).join('')}</div>
+    <p class="field-cap">Backup</p>
+    <p>Everything is saved on this phone only. Save a backup now and then (to Files or iCloud Drive) — it includes your photos.</p>
+    <div class="actions">
+      <button class="btn" id="s-export">Save backup</button>
+      <label class="btn ghost">Restore<input type="file" accept="application/json,.json" id="s-import" class="visually-hidden"></label>
     </div>
-    <div class="settings-group">
-      <h4>How scores work</h4>
-      <p style="margin:0">Each rating's overall score is the average of the qualities you ticked “Count toward overall”. A category's score is the average of all its ratings' overall scores.</p>
-    </div>`;
+    <p class="field-cap">How scores work</p>
+    <p>A rating's overall score is the average of the qualities you ticked. A food's average is the average of all its ratings. Stars show the same average out of 5.</p>
+  </div>`;
 
   openSheet({
     title: 'Profile',
     body,
     onSave: async () => {
-      S.profile = { ...S.profile, name: $('#s-name').value.trim() || 'My Tastebook' };
+      S.profile = { ...S.profile, name: $('#s-name').value.trim(), theme: document.documentElement.dataset.theme, avatar: av };
       await dbPut('meta', S.profile, 'profile');
       render();
     },
     mount: (wrap, close) => {
+      const startTheme = document.documentElement.dataset.theme;
+      const editor = $('#av-editor', wrap), preview = $('#av-preview', wrap);
+      const shapeRow = (part, label, vb) => `<p class="field-cap">${label}</p><div class="av-opts" style="--cols:${AVATAR_OPTIONS[part].length === 5 ? 5 : 3}">${AVATAR_OPTIONS[part].map(o =>
+        `<button type="button" class="av-opt ${av[part] === o.id ? 'on' : ''}" data-part="${part}" data-val="${o.id}" aria-label="${o.label}">${avatarSVG({ ...av, [part]: o.id }, vb)}<span>${o.label}</span></button>`).join('')}</div>`;
+      const colourRow = (part, label) => `<p class="field-cap">${label}</p><div class="swatches">${AVATAR_OPTIONS[part].map((c, i) =>
+        `<button type="button" class="swatch ${av[part] === i ? 'on' : ''}" style="--c:${c}" data-part="${part}" data-val="${i}" aria-label="${label} ${i + 1}"></button>`).join('')}</div>`;
+      const drawAvatar = () => {
+        preview.innerHTML = avatarSVG(av);
+        editor.innerHTML = shapeRow('hair', 'Hair', '0 0 200 200') + colourRow('hairColor', 'Hair colour')
+          + shapeRow('eyes', 'Eyes', FACE) + shapeRow('mouth', 'Mouth', FACE) + shapeRow('extra', 'Extras', FACE)
+          + colourRow('skin', 'Skin') + colourRow('shirt', 'Top') + colourRow('bg', 'Background');
+      };
+      drawAvatar();
+      editor.addEventListener('click', e => {
+        const b = e.target.closest('[data-part]');
+        if (!b) return;
+        const part = b.dataset.part;
+        av[part] = /^(skin|hairColor|shirt|bg)$/.test(part) ? +b.dataset.val : b.dataset.val;
+        drawAvatar();
+      });
+      const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+      $('#av-random', wrap).onclick = () => {
+        av.hair = pick(AVATAR_OPTIONS.hair).id; av.eyes = pick(AVATAR_OPTIONS.eyes).id; av.mouth = pick(AVATAR_OPTIONS.mouth).id;
+        av.extra = Math.random() < .6 ? 'none' : pick(AVATAR_OPTIONS.extra).id;
+        av.hairColor = Math.floor(Math.random() * AVATAR_OPTIONS.hairColor.length);
+        av.skin = Math.floor(Math.random() * AVATAR_OPTIONS.skin.length);
+        av.shirt = Math.floor(Math.random() * AVATAR_OPTIONS.shirt.length);
+        av.bg = Math.floor(Math.random() * AVATAR_OPTIONS.bg.length);
+        drawAvatar();
+      };
+      $('#theme-grid', wrap).addEventListener('click', e => {
+        const b = e.target.closest('[data-theme-id]');
+        if (!b) return;
+        applyTheme(b.dataset.themeId);
+        $$('.theme-opt', wrap).forEach(x => x.classList.toggle('on', x === b));
+      });
+      $('[data-close]', wrap).addEventListener('click', () => applyTheme(startTheme));
       $('#s-export', wrap).onclick = () => exportBackup().catch(e => toast(e.message));
       $('#s-import', wrap).addEventListener('change', async e => {
         const f = e.target.files?.[0];
         e.target.value = '';
         if (!f) return;
-        try {
-          if (await importBackup(f)) { close(); location.hash = ''; render(); toast('Backup restored'); }
-        } catch (err) { toast(err.message); }
+        try { if (await importBackup(f)) { close(); go(null); toast('Backup restored'); } }
+        catch (err) { toast(err.message); }
       });
     },
   });
@@ -732,32 +842,52 @@ document.addEventListener('click', e => {
   if (!el) return;
   const { action, id } = el.dataset;
   switch (action) {
-    case 'new-cat': openCategoryEditor(); break;
+    case 'open-cat': go(id); break;
+    case 'clear-demo':
+      (async () => {
+        for (const st of ['categories', 'ratings', 'photos']) await dbClear(st);
+        try { localStorage.setItem('tb2-demo-cleared', '1'); } catch {}
+        await loadState(); go(null); toast('Samples cleared');
+      })();
+      break;
+    case 'home': go(null); break;
     case 'edit-cat': openCategoryEditor(catById(id)); break;
     case 'new-rating': openRatingEditor(catById(id)); break;
     case 'view-rating': openRatingDetail(id); break;
     case 'settings': openSettings(); break;
     case 'sort':
       S.sort[id] = el.dataset.sort;
-      try { localStorage.setItem('tb-sort', JSON.stringify(S.sort)); } catch {}
+      try { localStorage.setItem('tb2-sort', JSON.stringify(S.sort)); } catch {}
       renderCategory(id);
       break;
   }
 });
 
-window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); });
 
 (async function start() {
+  try { db = await openDB(); } catch (e) { console.warn('Storage unavailable, using memory', e); db = null; }
   try {
-    db = await openDB();
     await loadState();
+    let cleared = false;
+    try { cleared = localStorage.getItem('tb2-demo-cleared') === '1'; } catch {}
+    if (window.TB_DEMO_SEED && !S.cats.length && !cleared) await seedDemo(window.TB_DEMO_SEED);
+    let saved = null;
+    try { saved = localStorage.getItem('tb2-theme'); } catch {}
+    applyTheme(S.profile.theme || saved || 'cinnamon');
+    const m = location.hash.match(/^#c-(.+)$/);
+    if (m && catById(m[1])) S.route = m[1];
     render();
     navigator.storage?.persist?.().catch(() => {});
   } catch (e) {
     console.error(e);
-    app.innerHTML = `<div class="empty-card"><strong>Couldn't open your data</strong>${esc(e.message)}. If you're in Private Browsing, switch it off and reload.</div>`;
+    app.innerHTML = `<p class="empty"><b>Couldn't open your data</b>${esc(e.message)}. If you're in Private Browsing, switch it off and reload.</p>`;
   }
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  }
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.TB_DEMO_SEED) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
+
+async function seedDemo(seed) {
+  for (const c of seed.categories) await dbPut('categories', c);
+  for (const r of seed.ratings) await dbPut('ratings', r);
+  if (seed.profile) await dbPut('meta', seed.profile, 'profile');
+  await loadState();
+}
