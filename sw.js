@@ -1,7 +1,7 @@
 // App files: network-first (fresh when online, cached when offline). Fonts: cache-first.
-const CACHE = 'yom-8';
+const CACHE = 'yom-9';
 const ASSETS = [
-  './', './index.html', './style.css?v=8', './app.js?v=8', './icons.js?v=8', './avatar.js?v=8', './manifest.webmanifest',
+  './', './index.html', './style.css?v=9', './app.js?v=9', './icons.js?v=9', './avatar.js?v=9', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'
 ];
 

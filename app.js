@@ -25,7 +25,7 @@ const firstGrapheme = s => {
   if (window.Intl && Intl.Segmenter) { for (const { segment } of new Intl.Segmenter().segment(s)) return segment; }
   return [...s][0];
 };
-const APP_VERSION = '8';
+const APP_VERSION = '9';
 const TAGLINES = [
   "Feeling hungry?",
   "What's on the menu today?",
@@ -83,6 +83,9 @@ const UI = {
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 3v18M3 12h18"/></svg>',
   edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
   x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+  grip: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>',
+  up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>',
+  down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
   star: '<svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>',
 };
 
@@ -477,14 +480,14 @@ function openCategoryEditor(existing, prefillName = '') {
   if (!existing && prefillName) {
     // guess an icon from the name
     const n = prefillName.toLowerCase();
-    const guess = [['smoothie', 'smoothie'], ['juice', 'smoothie'], ['shake', 'smoothie'], ['bubble', 'bubbletea'], ['boba', 'bubbletea'],
+    const guess = [['burger', 'burger'], ['pizza', 'pizza'], ['smoothie', 'smoothie'], ['juice', 'smoothie'], ['shake', 'smoothie'], ['bubble', 'bubbletea'], ['boba', 'bubbletea'],
       ['coffee', 'coffee'], ['latte', 'coffee'], ['cinnamon', 'roll'], ['scroll', 'roll'], ['donut', 'donut'], ['doughnut', 'donut'],
       ['cookie', 'cookie'], ['cake', 'cake'], ['cupcake', 'cupcake'], ['ice cream', 'icecream'], ['gelato', 'icecream'], ['pie', 'pie'],
       ['tart', 'pie'], ['taco', 'taco'], ['burrito', 'taco'], ['fries', 'fries'], ['chips', 'fries'], ['hot dog', 'hotdog'],
       ['sandwich', 'sandwich'], ['toastie', 'sandwich'], ['ramen', 'noodles'], ['noodle', 'noodles'], ['pho', 'noodles'], ['pasta', 'noodles'],
       ['sushi', 'sushi'], ['chicken', 'chicken'], ['wing', 'chicken'],  ['croissant', 'bread'],
       ['bread', 'bread'], ['bagel', 'bread'], ['cheese', 'cheese'], ['strawberr', 'strawberry'], ['cocktail', 'cocktail'], ['margarita', 'cocktail'],
-      ['salad', 'bowl'], ['bowl', 'bowl'], ['burger', 'burger'], ['pizza', 'pizza']];
+      ['salad', 'bowl'], ['bowl', 'bowl']];
     const hit = guess.find(([w]) => n.includes(w));
     if (hit) { d.icon = hit[1]; d.emoji = FOOD_ICONS[hit[1]].emoji; }
     const tintGuess = [[/strawberr|raspberr|pink|rose|cherry|watermelon|guava|dragon/, 8],
@@ -508,7 +511,7 @@ function openCategoryEditor(existing, prefillName = '') {
     <div class="swatches">${TINTS.map((col, i) => `<button type="button" class="swatch ${col === d.color ? 'on' : ''}" style="--c:var(--t${i})" data-color="${col}" aria-label="Colour"></button>`).join('')}</div>
 
     <p class="field-cap">Qualities you'll rate <small>■ = counts in score</small></p>
-    <p class="hint">Untick the box for things you just want to remember, like price.</p>
+    <p class="hint">Untick the box for things you just want to remember, like price. Drag to reorder — most important at the top.</p>
     <ul class="q-list" id="q-list"></ul>
     <div class="q-add"><input id="q-new" class="inp" type="text" placeholder="Add a quality..." maxlength="30" autocomplete="off" enterkeyhint="done"><button type="button" class="btn" id="q-add">Add</button></div>
     <div class="chips" id="q-chips"></div>
@@ -539,7 +542,12 @@ function openCategoryEditor(existing, prefillName = '') {
       const drawQualities = () => {
         qList.innerHTML = d.qualities.map(q => `
           <li class="q-row" data-qid="${q.id}">
+            <span class="q-grip" aria-hidden="true">${UI.grip}</span>
             <input type="text" value="${esc(q.name)}" maxlength="30" data-qname aria-label="Quality name">
+            <span class="q-move">
+              <button type="button" class="q-arrow" data-qmove="-1" aria-label="Move ${esc(q.name)} up">${UI.up}</button>
+              <button type="button" class="q-arrow" data-qmove="1" aria-label="Move ${esc(q.name)} down">${UI.down}</button>
+            </span>
             ${checkbox(q.counts !== false, 'data-qcount', 'Counts')}
             <button type="button" class="q-del" data-qdel aria-label="Remove">${UI.x}</button>
           </li>`).join('');
@@ -587,6 +595,22 @@ function openCategoryEditor(existing, prefillName = '') {
         const q = d.qualities.find(x => x.id === e.target.closest('[data-qid]')?.dataset.qid);
         if (q && e.target.matches('[data-qcount]')) q.counts = e.target.checked;
       });
+      // Reorder: drag (mouse), long-press + drag (touch), or the small arrows (keyboard / screen readers)
+      enableDragReorder(qList, wrap, ids => {
+        d.qualities = ids.map(id => d.qualities.find(q => q.id === id)).filter(Boolean);
+      });
+      qList.addEventListener('click', e => {
+        const mv = e.target.closest('[data-qmove]');
+        if (mv) {
+          const id = mv.closest('[data-qid]').dataset.qid;
+          const i = d.qualities.findIndex(q => q.id === id), j = i + +mv.dataset.qmove;
+          if (j < 0 || j >= d.qualities.length) return;
+          [d.qualities[i], d.qualities[j]] = [d.qualities[j], d.qualities[i]];
+          drawQualities();
+          qList.querySelector(`[data-qid="${id}"] [data-qmove="${mv.dataset.qmove}"]`)?.focus();
+          return;
+        }
+      });
       qList.addEventListener('click', e => {
         const del = e.target.closest('[data-qdel]');
         if (!del) return;
@@ -613,6 +637,101 @@ function openCategoryEditor(existing, prefillName = '') {
       };
     },
   });
+}
+
+/* ---------- drag to reorder a list ---------- */
+function enableDragReorder(list, wrap, onDone) {
+  const scroller = $('.sheet-body', wrap);
+  let st = null; // drag state
+  const isControl = el => el.closest('.sq, .q-del, .q-arrow, input[type=checkbox]');
+
+  function begin(row, y) {
+    const r = row.getBoundingClientRect();
+    const ph = document.createElement('li');
+    ph.className = 'q-placeholder';
+    ph.style.height = `${r.height}px`;
+    row.after(ph);
+    document.activeElement?.blur?.();
+    row.classList.add('dragging');
+    Object.assign(row.style, { position: 'fixed', left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, zIndex: 70 });
+    st = { ...st, row, ph, offset: y - r.top, active: true, lastY: y };
+    haptic();
+  }
+  function move(y) {
+    st.lastY = y;
+    st.row.style.top = `${y - st.offset}px`;
+    const rows = [...list.children].filter(el => el !== st.row && el !== st.ph);
+    const before = rows.find(el => { const r = el.getBoundingClientRect(); return y < r.top + r.height / 2; });
+    const target = before || null;
+    if (target ? st.ph.nextSibling !== target : list.lastElementChild !== st.ph) {
+      list.insertBefore(st.ph, target);
+      haptic();
+    }
+    // auto-scroll near the edges
+    const sr = scroller.getBoundingClientRect();
+    st.scrollDir = y < sr.top + 70 ? -1 : y > sr.bottom - 70 ? 1 : 0;
+    if (st.scrollDir && !st.scrollTimer) {
+      st.scrollTimer = setInterval(() => {
+        if (!st?.scrollDir) return;
+        scroller.scrollTop += st.scrollDir * 8;
+        move(st.lastY);
+      }, 16);
+    }
+  }
+  function end() {
+    if (!st) return;
+    clearTimeout(st.pressTimer);
+    clearInterval(st.scrollTimer);
+    if (st.active) {
+      st.ph.replaceWith(st.row);
+      st.row.classList.remove('dragging');
+      st.row.removeAttribute('style');
+      st.row.classList.add('dropped');
+      setTimeout(() => st?.row?.classList.remove('dropped'), 300);
+      const row = st.row;
+      setTimeout(() => row.classList.remove('dropped'), 300);
+      onDone([...list.children].map(el => el.dataset.qid).filter(Boolean));
+    }
+    st = null;
+  }
+
+  // Mouse / pen: press and move a few pixels to start dragging
+  list.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'touch' || e.button !== 0) return;
+    const row = e.target.closest('.q-row');
+    if (!row || isControl(e.target)) return;
+    st = { row, startY: e.clientY, active: false, mouse: true };
+    if (!e.target.matches('input')) e.preventDefault();
+  });
+  document.addEventListener('pointermove', e => {
+    if (!st?.mouse) return;
+    if (!st.active && Math.abs(e.clientY - st.startY) > 5) { begin(st.row, e.clientY); window.getSelection()?.removeAllRanges(); }
+    if (st?.active) { e.preventDefault(); move(e.clientY); }
+  });
+  document.addEventListener('pointerup', () => { if (st?.mouse) end(); });
+
+  // Touch: hold for a moment, then drag. Touching the dotted handle starts right away.
+  list.addEventListener('touchstart', e => {
+    const row = e.target.closest('.q-row');
+    if (!row || isControl(e.target)) return;
+    const t = e.touches[0];
+    st = { row, startY: t.clientY, startX: t.clientX, active: false, touch: true };
+    if (e.target.closest('.q-grip')) { e.preventDefault(); begin(row, t.clientY); return; }
+    st.pressTimer = setTimeout(() => { if (st && !st.active) begin(row, st.startY); }, 320);
+  }, { passive: false });
+  document.addEventListener('touchmove', e => {
+    if (!st?.touch) return;
+    const t = e.touches[0];
+    if (!st.active) {
+      if (Math.hypot(t.clientX - st.startX, t.clientY - st.startY) > 8) { clearTimeout(st.pressTimer); st = null; } // it's a scroll
+      return;
+    }
+    e.preventDefault();
+    move(t.clientY);
+  }, { passive: false });
+  document.addEventListener('touchend', () => { if (st?.touch) end(); });
+  document.addEventListener('touchcancel', () => { if (st?.touch) end(); });
+  list.addEventListener('contextmenu', e => { if (e.target.closest('.q-row')) e.preventDefault(); });
 }
 
 /* ---------- photos ---------- */
